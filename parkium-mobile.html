@@ -1,0 +1,1948 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parkium – Prototipo</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:#111;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.phone-outer{width:390px;height:820px;background:#0d1526;border-radius:44px;overflow:hidden;position:relative;box-shadow:0 0 0 2px #1e2f4a,0 30px 80px rgba(0,0,0,.7)}
+.app{width:100%;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;background:#0d1526}
+
+/* ---- SCREENS ---- */
+.screen{position:absolute;inset:0;bottom:60px;overflow-y:auto;display:none;flex-direction:column}
+.screen.active{display:flex}
+.screen-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+
+/* ---- BOTTOM NAV ---- */
+.bottom-nav{position:absolute;bottom:0;left:0;right:0;height:60px;background:#0f1a2e;border-top:1px solid #1e2f4a;display:flex;z-index:100}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;cursor:pointer;color:#5570a0;transition:color .2s}
+.nav-btn.active{color:#4a9eff}
+.nav-btn svg{width:22px;height:22px}
+.nav-btn span{font-size:10px;font-weight:600}
+
+/* ---- DRAWER ---- */
+.drawer-overlay{position:absolute;inset:0;background:rgba(0,0,0,0);z-index:200;pointer-events:none;transition:background .3s}
+.drawer-overlay.open{background:rgba(0,0,0,.6);pointer-events:all}
+.drawer{position:absolute;top:0;left:-280px;width:280px;height:100%;background:#0f1a2e;z-index:201;transition:left .3s ease;display:flex;flex-direction:column;border-right:1px solid #1e2f4a}
+.drawer.open{left:0}
+.drawer-header{padding:24px 20px 16px;background:linear-gradient(135deg,#00d4aa,#2b7de9);display:flex;align-items:center;gap:12px;min-height:90px}
+.drawer-logo{width:44px;height:44px;background:rgba(255,255,255,.2);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff}
+.drawer-title{font-size:20px;font-weight:700;color:#fff}
+.drawer-sub{font-size:11px;color:rgba(255,255,255,.7);margin-top:2px}
+.drawer-body{flex:1;overflow-y:auto;padding:8px 0}
+.drawer-section{padding:6px 16px 2px;font-size:10px;font-weight:700;color:#5570a0;text-transform:uppercase;letter-spacing:1px}
+.drawer-item{display:flex;align-items:center;gap:12px;padding:12px 20px;cursor:pointer;color:#c8d8f0;font-size:14px;font-weight:500;transition:background .2s}
+.drawer-item:hover{background:#162035}
+.drawer-item .di-icon{width:28px;height:28px;background:#162035;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.lang-select-wrap{padding:10px 16px 4px}
+.lang-select{width:100%;background:#162035;border:1px solid #1e2f4a;border-radius:10px;padding:9px 12px;color:#e8f0ff;font-size:13px;font-weight:600;cursor:pointer;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235570a0' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.lang-select option{background:#0f1a2e;color:#e8f0ff}
+.drawer-logout{margin:8px 16px 20px;padding:12px;border-radius:12px;background:#ff4d6d22;border:1px solid #ff4d6d44;color:#ff4d6d;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
+
+/* ---- INICIO SCREEN ---- */
+.screen-inicio{background:#0d1526}
+.inicio-header{display:flex;align-items:center;padding:16px 20px 12px;gap:12px;flex-shrink:0}
+.hamburger-btn{width:38px;height:38px;background:#162035;border:1px solid #1e2f4a;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;flex-shrink:0}
+.hamburger-btn span{width:18px;height:2px;background:#c8d8f0;border-radius:1px}
+.location-pill{flex:1;background:#162035;border:1px solid #1e2f4a;border-radius:20px;padding:7px 14px;display:flex;align-items:center;gap:6px;cursor:pointer;min-width:0}
+.location-pill svg{color:#4a9eff;flex-shrink:0;width:14px;height:14px}
+.location-text{font-size:13px;color:#c8d8f0;font-weight:600;flex:1;truncate:ellipsis;white-space:nowrap;overflow:hidden}
+.location-pill .arrow{color:#5570a0;font-size:10px;flex-shrink:0}
+.notif-btn{width:38px;height:38px;background:#162035;border:1px solid #1e2f4a;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.stats-row{display:flex;gap:8px;padding:0 16px 12px;flex-shrink:0}
+.stat-card{flex:1;background:#162035;border:1px solid #1e2f4a;border-radius:12px;padding:10px 8px;text-align:center}
+.stat-num{font-size:18px;font-weight:700;color:#e8f0ff}
+.stat-lbl{font-size:9px;color:#5570a0;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.stat-card.donut-card{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px}
+.donut-wrap{position:relative;width:44px;height:44px;flex-shrink:0}
+.donut-wrap svg{transform:rotate(-90deg)}
+.donut-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#e8f0ff}
+.donut-info{text-align:left}
+.alert-banner{margin:0 16px 12px;background:#ffb02022;border:1px solid #ffb02044;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.alert-icon{font-size:16px;flex-shrink:0}
+.alert-text{font-size:12px;color:#ffb020;font-weight:600}
+.parking-map-section{margin:0 16px;background:#162035;border:1px solid #1e2f4a;border-radius:14px;overflow:hidden;flex-shrink:0}
+.pm-header{padding:10px 14px;border-bottom:1px solid #1e2f4a;display:flex;align-items:center;justify-content:space-between}
+.pm-title{font-size:13px;font-weight:700;color:#e8f0ff}
+.level-tabs{display:flex;gap:4px}
+.level-tab{padding:4px 10px;border-radius:6px;border:none;background:none;color:#5570a0;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s}
+.level-tab.active{background:#4a9eff22;color:#4a9eff}
+.pm-search{padding:8px 12px;border-bottom:1px solid #1e2f4a}
+.pm-search input{width:100%;background:#0d1526;border:1px solid #1e2f4a;border-radius:8px;padding:7px 12px;color:#e8f0ff;font-size:12px;outline:none}
+.pm-search input::placeholder{color:#5570a0}
+.spot-grid{display:block;padding:0;line-height:0;width:100%}
+.spot{aspect-ratio:1;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;cursor:pointer;transition:transform .1s;border:1px solid transparent}
+.spot.avail{background:#00c97a22;border-color:#00c97a44;color:#00c97a}
+.spot.avail:active{transform:scale(.9)}
+.spot.occ{background:#ff4d6d22;border-color:#ff4d6d44;color:#ff4d6d;cursor:default}
+.spot.reserved{background:#4a9eff22;border-color:#4a9eff44;color:#4a9eff;cursor:default}
+.spots-legend{padding:0 12px 10px;display:flex;gap:10px}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:9px;color:#5570a0}
+.legend-dot{width:8px;height:8px;border-radius:2px}
+.inicio-actions{padding:12px 16px 16px;display:flex;gap:10px;flex-shrink:0}
+.action-btn{flex:1;padding:12px;border-radius:12px;border:none;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-primary{background:linear-gradient(135deg,#00d4aa,#2b7de9);color:#fff}
+.btn-secondary{background:#162035;border:1px solid #1e2f4a;color:#c8d8f0}
+
+/* ---- MAP SCREEN ---- */
+.screen-mapa{position:absolute;inset:0;bottom:60px;display:none;flex-direction:column;overflow:hidden}
+.screen-mapa.active{display:flex}
+.mapa-top-bar{flex-shrink:0;background:#0c1628;border-bottom:1px solid #1a2840;padding:10px 12px 8px;z-index:10;position:relative}
+#map-container{position:relative;flex:1;min-height:0;background:#0d1526;overflow:hidden}
+.mapa-scroll-area{flex-shrink:0;overflow-x:hidden;overflow-y:auto;background:#0d1526;max-height:220px}
+#leaflet-map{width:100%;height:100%}
+.map-overlay{position:absolute;bottom:10px;left:10px;right:50px;z-index:10;pointer-events:none}
+.map-overlay > *{pointer-events:all}
+.map-search-bar{display:flex;align-items:center;gap:8px;background:#111f38;border:1px solid #1e2f4a;border-radius:10px;padding:8px 12px;margin-bottom:8px}
+.map-search-bar input{flex:1;background:none;border:none;outline:none;color:#e8f0ff;font-size:13px}
+.map-search-bar input::placeholder{color:#5570a0}
+.map-filters{display:flex;gap:6px;margin-top:7px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.map-filters::-webkit-scrollbar{display:none}
+.filter-pill{padding:5px 12px;border-radius:20px;border:1px solid #1e2f4a;background:#0f1a2ecc;color:#c8d8f0;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;backdrop-filter:blur(4px);transition:all .2s}
+.filter-pill.active{background:#4a9eff;border-color:#4a9eff;color:#fff}
+.route-info-bar{margin-top:7px;background:#162035ee;border:1px solid #4a9eff44;border-radius:10px;padding:8px 12px;display:none;align-items:center;gap:8px;backdrop-filter:blur(4px)}
+.route-info-bar.visible{display:flex}
+.rib-icon{font-size:16px}
+.rib-text{flex:1}
+.rib-name{font-size:12px;font-weight:700;color:#e8f0ff}
+.rib-dist{font-size:11px;color:#5570a0}
+.rib-close{width:26px;height:26px;background:#ff4d6d22;border-radius:6px;border:none;color:#ff4d6d;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+.map-recenter-btn{position:absolute;bottom:10px;right:10px;z-index:10;width:38px;height:38px;background:#162035;border:1px solid #1e2f4a;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+/* mapa-scroll-area defined above in map-container block */
+.mbs-section-title{font-size:11px;font-weight:700;color:#5570a0;padding:10px 14px 6px;text-transform:uppercase;letter-spacing:.5px}
+.mbs-cards{display:flex;gap:10px;padding:0 14px 12px;overflow-x:auto;scrollbar-width:none}
+.mbs-cards::-webkit-scrollbar{display:none}
+.mbs-card{min-width:160px;background:#162035;border:1px solid #1e2f4a;border-radius:12px;padding:10px;cursor:pointer;transition:border-color .2s;flex-shrink:0}
+.mbs-card.selected{border-color:#4a9eff}
+.mbs-card-icon{font-size:20px;margin-bottom:4px}
+.mbs-card-name{font-size:12px;font-weight:700;color:#e8f0ff;margin-bottom:2px}
+.mbs-card-addr{font-size:10px;color:#5570a0;margin-bottom:6px}
+.mbs-card-avail{font-size:11px;font-weight:600}
+.mbs-card-avail.ok{color:#00c97a}
+.mbs-card-avail.low{color:#ffb020}
+.mbs-card-avail.full{color:#ff4d6d}
+.mbs-card-price{font-size:11px;color:#4a9eff;font-weight:600}
+
+/* ---- RESERVAS SCREEN ---- */
+.screen-reservas{background:#0d1526}
+.reservas-header{padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.screen-title{font-size:18px;font-weight:700;color:#e8f0ff}
+.new-res-btn{background:linear-gradient(135deg,#00d4aa,#2b7de9);border:none;border-radius:10px;padding:8px 14px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px}
+.res-section-title{padding:4px 20px 8px;font-size:11px;font-weight:700;color:#5570a0;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}
+.res-card{margin:0 16px 10px;background:#162035;border:1px solid #1e2f4a;border-radius:14px;padding:14px;flex-shrink:0}
+.res-card-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.res-icon{width:40px;height:40px;background:#0d1526;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.res-card-info{flex:1;min-width:0}
+.res-name{font-size:13px;font-weight:700;color:#e8f0ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.res-spot{font-size:11px;color:#5570a0;margin-top:1px}
+.res-badge{padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;flex-shrink:0}
+.badge-active{background:#00c97a22;color:#00c97a;border:1px solid #00c97a44}
+.badge-upcoming{background:#4a9eff22;color:#4a9eff;border:1px solid #4a9eff44}
+.badge-used{background:#5570a022;color:#5570a0;border:1px solid #5570a044}
+.res-card-details{display:flex;gap:10px;flex-wrap:wrap}
+.res-detail{display:flex;align-items:center;gap:4px;font-size:11px;color:#5570a0}
+.res-detail strong{color:#c8d8f0}
+.res-timer{font-size:16px;font-weight:700;color:#00c97a;font-variant-numeric:tabular-nums;font-family:monospace}
+.res-actions{margin-top:10px;display:flex;gap:8px}
+.res-action-btn{flex:1;padding:8px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:600}
+.res-btn-nav{background:#4a9eff22;color:#4a9eff}
+.res-btn-cancel{background:#ff4d6d22;color:#ff4d6d}
+.empty-state{padding:40px 20px;text-align:center;color:#5570a0;font-size:14px}
+
+/* ---- PERFIL SCREEN ---- */
+.screen-perfil{background:#0d1526}
+.perfil-header{padding:16px 20px 8px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.perfil-avatar-section{padding:8px 20px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0}
+.avatar-wrap{position:relative;width:84px;height:84px;flex-shrink:0;cursor:pointer}
+.avatar{width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,#00d4aa,#2b7de9);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;color:#fff;overflow:hidden;border:3px solid #1e2f4a}
+.avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.avatar-pencil{position:absolute;bottom:2px;right:2px;width:26px;height:26px;border-radius:50%;background:#4a9eff;border:2px solid #0d1526;display:flex;align-items:center;justify-content:center;font-size:12px;pointer-events:none}
+.avatar-info{text-align:center}
+.avatar-name{font-size:17px;font-weight:700;color:#e8f0ff}
+.avatar-email{font-size:12px;color:#5570a0;margin-top:2px}
+.edit-profile-btn{padding:7px 18px;background:#162035;border:1px solid #1e2f4a;border-radius:20px;color:#4a9eff;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px}
+#photoInput{display:none}
+.perfil-stats{display:flex;gap:10px;padding:0 20px 16px;flex-shrink:0}
+.perfil-stat{flex:1;background:#162035;border:1px solid #1e2f4a;border-radius:12px;padding:12px;text-align:center}
+.ps-num{font-size:20px;font-weight:700;color:#e8f0ff}
+.ps-lbl{font-size:10px;color:#5570a0;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
+.perfil-menu{padding:0 16px;flex-shrink:0}
+.pm-item{display:flex;align-items:center;gap:12px;padding:13px 14px;background:#162035;border:1px solid #1e2f4a;border-radius:12px;margin-bottom:8px;cursor:pointer;transition:border-color .2s}
+.pm-item:hover{border-color:#4a9eff44}
+.pm-item-icon{width:32px;height:32px;border-radius:8px;background:#0d1526;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.pm-item-text{flex:1}
+.pm-item-label{font-size:13px;font-weight:600;color:#e8f0ff}
+.pm-item-sub{font-size:11px;color:#5570a0;margin-top:1px}
+.pm-item-arrow{color:#5570a0;font-size:14px}
+.perfil-logout{margin:8px 16px 16px;padding:12px;border-radius:12px;background:#ff4d6d22;border:1px solid #ff4d6d44;color:#ff4d6d;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;width:calc(100% - 32px)}
+
+/* ---- FULL MODALS ---- */
+.full-modal{position:absolute;inset:0;z-index:300;background:#0d1526;display:none;flex-direction:column}
+.full-modal.open{display:flex}
+.modal-header{display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid #1e2f4a;flex-shrink:0;gap:12px}
+.modal-back{width:34px;height:34px;background:#162035;border:1px solid #1e2f4a;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#c8d8f0;flex-shrink:0}
+.modal-title{font-size:16px;font-weight:700;color:#e8f0ff;flex:1}
+.modal-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 20px}
+
+/* City Modal */
+.city-search{width:100%;background:#162035;border:1px solid #1e2f4a;border-radius:12px;padding:10px 14px;color:#e8f0ff;font-size:14px;outline:none;margin-bottom:14px}
+.city-search::placeholder{color:#5570a0}
+.region-section{margin-bottom:8px;border:1px solid #1e2f4a;border-radius:12px;overflow:hidden}
+.region-header{padding:12px 14px;background:#162035;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.region-name{font-size:13px;font-weight:700;color:#e8f0ff}
+.region-arrow{color:#5570a0;font-size:12px;transition:transform .2s}
+.region-arrow.open{transform:rotate(180deg)}
+.region-cities{display:none;background:#0d1526;padding:6px 0}
+.region-cities.open{display:block}
+.city-item{padding:10px 20px;font-size:13px;color:#c8d8f0;cursor:pointer;transition:background .15s}
+.city-item:hover{background:#162035}
+.city-item.active{color:#4a9eff;font-weight:600}
+
+.bsm-handle{width:36px;height:3px;background:#1e2f4a;border-radius:2px;margin:8px auto 12px}
+.bsm-title{font-size:15px;font-weight:700;color:#e8f0ff;padding:0 20px 8px}
+.bsm-body{padding:0 20px}
+.bsm-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e2f4a}
+.bsm-row:last-child{border-bottom:none}
+.bsm-label{font-size:12px;color:#5570a0}
+.bsm-value{font-size:12px;font-weight:600;color:#e8f0ff}
+.bsm-book-btn{margin:12px 20px 0;width:calc(100% - 40px);padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#00d4aa,#2b7de9);color:#fff;font-size:14px;font-weight:700;cursor:pointer}
+
+/* New Reservation Modal */
+.modal-step{display:none}
+.modal-step.active{display:block}
+.step-indicator{display:flex;align-items:center;gap:6px;margin-bottom:16px}
+.step-dot{width:28px;height:28px;border-radius:50%;border:2px solid #1e2f4a;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#5570a0}
+.step-dot.active{border-color:#4a9eff;background:#4a9eff22;color:#4a9eff}
+.step-dot.done{border-color:#00c97a;background:#00c97a22;color:#00c97a}
+.step-line{flex:1;height:1px;background:#1e2f4a}
+.step-line.done{background:#00c97a44}
+.parking-list-item{padding:12px;background:#162035;border:1px solid #1e2f4a;border-radius:12px;margin-bottom:8px;cursor:pointer;transition:border-color .2s;display:flex;align-items:center;gap:10px}
+.parking-list-item.selected{border-color:#4a9eff}
+.pli-icon{font-size:22px;flex-shrink:0}
+.pli-info{flex:1}
+.pli-name{font-size:13px;font-weight:700;color:#e8f0ff}
+.pli-addr{font-size:11px;color:#5570a0}
+.pli-avail{font-size:11px;font-weight:600}
+.form-group{margin-bottom:14px}
+.form-label{font-size:11px;font-weight:700;color:#5570a0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block}
+.form-input{width:100%;background:#162035;border:1px solid #1e2f4a;border-radius:10px;padding:10px 14px;color:#e8f0ff;font-size:14px;outline:none}
+.form-input:focus{border-color:#4a9eff44}
+.duration-pills{display:flex;gap:8px}
+.dur-pill{flex:1;padding:9px;border-radius:10px;border:1px solid #1e2f4a;background:#162035;color:#c8d8f0;font-size:13px;font-weight:600;cursor:pointer;text-align:center;transition:all .2s}
+.dur-pill.active{background:#4a9eff22;border-color:#4a9eff;color:#4a9eff}
+.confirm-card{background:#162035;border:1px solid #1e2f4a;border-radius:14px;padding:16px;margin-bottom:16px}
+.cc-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #0d1526}
+.cc-row:last-child{border-bottom:none}
+.cc-label{font-size:12px;color:#5570a0}
+.cc-value{font-size:12px;font-weight:600;color:#e8f0ff}
+.modal-nav-btns{display:flex;gap:10px;margin-top:14px}
+.mnb-prev{flex:1;padding:11px;border-radius:10px;background:#162035;border:1px solid #1e2f4a;color:#c8d8f0;font-size:13px;font-weight:600;cursor:pointer}
+.mnb-next{flex:1;padding:11px;border-radius:10px;background:linear-gradient(135deg,#00d4aa,#2b7de9);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.mnb-confirm{width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#00c97a,#00a060);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px}
+
+/* Payment Modal */
+.credit-card-visual{width:100%;aspect-ratio:1.586;background:linear-gradient(135deg,#0d2a4a,#1e4a7a,#0d3a5a);border-radius:16px;padding:20px;position:relative;overflow:hidden;margin-bottom:16px}
+.ccv-shine{position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(180deg,rgba(255,255,255,.08),transparent)}
+.ccv-bank{font-size:13px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:2px;text-transform:uppercase}
+.ccv-chip{width:32px;height:24px;background:linear-gradient(135deg,#c8a020,#f0c040);border-radius:4px;margin:16px 0 0;position:relative}
+.ccv-chip::after{content:'';position:absolute;inset:4px;border:1px solid rgba(0,0,0,.3);border-radius:2px}
+.ccv-number{font-size:17px;font-weight:600;color:#fff;letter-spacing:2px;margin:16px 0 8px;font-family:monospace}
+.ccv-bottom{display:flex;justify-content:space-between;align-items:flex-end}
+.ccv-name{font-size:12px;color:rgba(255,255,255,.8);font-weight:600;text-transform:uppercase;letter-spacing:1px}
+.ccv-expiry{text-align:right}
+.ccv-expiry-label{font-size:9px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px}
+.ccv-expiry-val{font-size:13px;color:#fff;font-weight:600}
+.card-edit-form{display:none}
+.card-edit-form.visible{display:block}
+.card-btns{display:flex;gap:10px;margin-top:14px}
+.card-edit-btn{flex:1;padding:10px;border-radius:10px;background:#162035;border:1px solid #4a9eff44;color:#4a9eff;font-size:13px;font-weight:600;cursor:pointer}
+.card-add-btn{flex:1;padding:10px;border-radius:10px;background:none;border:1px solid #1e2f4a;color:#c8d8f0;font-size:13px;font-weight:600;cursor:pointer}
+.card-save-btn{width:100%;padding:11px;border-radius:10px;background:linear-gradient(135deg,#00d4aa,#2b7de9);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px}
+
+/* Notifications Modal */
+.notif-item{display:flex;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:1px solid #1e2f4a}
+.notif-item:last-child{border-bottom:none}
+.notif-text{flex:1}
+.notif-label{font-size:13px;font-weight:600;color:#e8f0ff}
+.notif-desc{font-size:11px;color:#5570a0;margin-top:2px}
+.toggle-wrap{flex-shrink:0}
+.toggle-input{display:none}
+.toggle-label{display:block;width:44px;height:24px;background:#1e2f4a;border-radius:12px;cursor:pointer;position:relative;transition:background .2s}
+.toggle-label::after{content:'';position:absolute;width:18px;height:18px;background:#5570a0;border-radius:50%;top:3px;left:3px;transition:all .2s}
+.toggle-input:checked + .toggle-label{background:#4a9eff44}
+.toggle-input:checked + .toggle-label::after{left:23px;background:#4a9eff}
+.notif-save-btn{width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#00d4aa,#2b7de9);color:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-top:16px}
+
+/* Parking lot SVG */
+.lot-spot{transition:opacity .15s}
+.lot-spot:hover{opacity:.85}
+.spot-grid{padding:0;overflow:hidden}
+
+/* Spot detail backdrop */
+.spot-backdrop{position:absolute;inset:0;z-index:240;background:rgba(0,0,0,0);pointer-events:none;transition:background .25s}
+.spot-backdrop.open{background:rgba(0,0,0,.5);pointer-events:all}
+.bottom-sheet-modal{position:absolute;left:0;right:0;bottom:0;z-index:250;background:#162035;border-radius:16px 16px 0 0;border-top:1px solid #1e2f4a;transform:translateY(100%);transition:transform .3s;padding:0 0 16px}
+.bottom-sheet-modal.open{transform:translateY(0)}
+
+/* Closing notification */
+.closing-notif{position:absolute;top:12px;left:12px;right:12px;z-index:400;background:#ffb020;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:8px;transform:translateY(-80px);transition:transform .3s;pointer-events:none}
+.closing-notif.show{transform:translateY(0)}
+.closing-notif-text{font-size:12px;font-weight:700;color:#0d1526;flex:1}
+.closing-notif-close{background:none;border:none;font-size:14px;cursor:pointer;color:#0d1526;pointer-events:all}
+
+/* DB status indicator */
+.db-badge{position:absolute;top:8px;right:14px;z-index:50;background:#162035;border:1px solid #00c97a44;border-radius:20px;padding:3px 9px;font-size:9px;font-weight:700;color:#00c97a;display:flex;align-items:center;gap:4px}
+.db-dot{width:5px;height:5px;border-radius:50%;background:#00c97a;animation:pulse-dot 2s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Toast */
+.toast{position:absolute;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:#00c97a;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:700;z-index:500;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#1e2f4a;border-radius:2px}
+
+/* Marker custom */
+.custom-marker{width:32px;height:32px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff}
+.marker-avail{background:#00c97a}
+.marker-low{background:#ffb020}
+.marker-full{background:#ff4d6d}
+
+/* Leaflet overrides */
+.leaflet-container{background:#0d1526!important}
+.leaflet-control-zoom{display:none}
+</style>
+</head>
+<body>
+<div class="phone-outer">
+<div class="app" id="app">
+
+<!-- ===== DRAWER OVERLAY ===== -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-logo">P</div>
+    <div>
+      <div class="drawer-title">Parkium</div>
+      <div class="drawer-sub" data-i18n="drawer_sub">Estacionamiento inteligente</div>
+    </div>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-section" data-i18n="nav_label">Navegación</div>
+    <div class="drawer-item" onclick="navigateTo('inicio');closeDrawer()">
+      <div class="di-icon">🏠</div><span data-i18n="nav_inicio">Inicio</span>
+    </div>
+    <div class="drawer-item" onclick="navigateTo('mapa');closeDrawer()">
+      <div class="di-icon">🗺️</div><span data-i18n="nav_mapa">Mapa</span>
+    </div>
+    <div class="drawer-item" onclick="navigateTo('reservas');closeDrawer()">
+      <div class="di-icon">📋</div><span data-i18n="nav_reservas">Reservas</span>
+    </div>
+    <div class="drawer-item" onclick="navigateTo('perfil');closeDrawer()">
+      <div class="di-icon">👤</div><span data-i18n="nav_perfil">Perfil</span>
+    </div>
+    <div class="drawer-section" data-i18n="settings_label">Configuración</div>
+    <div class="drawer-item" onclick="openNotifModal();closeDrawer()">
+      <div class="di-icon">🔔</div><span data-i18n="notif_title">Notificaciones</span>
+    </div>
+    <div class="drawer-item" onclick="openPaymentModal();closeDrawer()">
+      <div class="di-icon">💳</div><span data-i18n="payment_title">Métodos de pago</span>
+    </div>
+    <div class="drawer-item" onclick="navigateTo('perfil');closeDrawer()">
+      <div class="di-icon">🚗</div><span data-i18n="vehicle_label">Mi vehículo</span>
+    </div>
+    <div class="drawer-section" data-i18n="lang_label">Idioma</div>
+    <div class="lang-select-wrap">
+      <select class="lang-select" id="langSelect" onchange="setLang(this.value)">
+        <option value="es">🇨🇱 Español</option>
+        <option value="en">🇺🇸 English</option>
+        <option value="map">🌿 Mapudungun</option>
+        <option value="ht">🇭🇹 Kreyòl ayisyen</option>
+        <option value="zh">🇨🇳 中文</option>
+        <option value="pt">🇧🇷 Português</option>
+      </select>
+    </div>
+  </div>
+  <div class="drawer-logout" onclick="closeDrawer()">
+    <span>🚪</span><span data-i18n="logout">Cerrar sesión</span>
+  </div>
+</div>
+
+<!-- ===== INICIO SCREEN ===== -->
+<div class="screen screen-inicio active" id="screen-inicio">
+  <div style="flex-shrink:0">
+    <div class="inicio-header">
+      <div class="hamburger-btn" onclick="openDrawer()">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="location-pill" onclick="openCityModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
+        <span class="location-text" id="locationText">Talca, Chile</span>
+        <span class="arrow">▾</span>
+      </div>
+      <div class="notif-btn" onclick="openNotifModal()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c8d8f0" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-num">50</div>
+        <div class="stat-lbl" data-i18n="stat_total">Total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statsAvail" style="color:#00c97a">22</div>
+        <div class="stat-lbl" data-i18n="stat_avail">Disponibles</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statsOcc" style="color:#ff4d6d">28</div>
+        <div class="stat-lbl" data-i18n="stat_occ">Ocupados</div>
+      </div>
+      <div class="stat-card donut-card">
+        <div class="donut-wrap">
+          <svg width="44" height="44" viewBox="0 0 44 44">
+            <circle cx="22" cy="22" r="18" fill="none" stroke="#1e2f4a" stroke-width="5"/>
+            <circle cx="22" cy="22" r="18" fill="none" stroke="#ff4d6d" stroke-width="5"
+              stroke-dasharray="113.1" stroke-dashoffset="27.1" stroke-linecap="round"/>
+          </svg>
+          <div class="donut-center">76%</div>
+        </div>
+        <div class="donut-info">
+          <div style="font-size:11px;font-weight:700;color:#c8d8f0" data-i18n="stat_occ2">Ocup.</div>
+          <div style="font-size:10px;color:#5570a0">zona</div>
+        </div>
+      </div>
+    </div>
+    <div class="alert-banner">
+      <span class="alert-icon">⚠️</span>
+      <span class="alert-text" data-i18n="alert_demand">Alta demanda en zona central</span>
+    </div>
+    <div class="parking-map-section">
+      <div class="pm-header">
+        <span class="pm-title" data-i18n="spots_title">Mapa de espacios</span>
+        <div class="level-tabs">
+          <button class="level-tab active" onclick="selectLevel(1,this)">N1</button>
+          <button class="level-tab" onclick="selectLevel(2,this)">N2</button>
+          <button class="level-tab" onclick="selectLevel(3,this)">N3</button>
+        </div>
+      </div>
+      <div class="pm-search">
+        <input type="text" id="spotSearch" placeholder="Buscar espacio (ej: A-03)..." oninput="filterSpots(this.value)">
+      </div>
+      <!-- Aerial-view parking lot SVG -->
+      <div class="spot-grid" id="spotGrid"></div>
+      <div class="spots-legend" style="padding:6px 12px 10px">
+        <div class="legend-item"><div class="legend-dot" style="background:#00c97a44;border:1px solid #00c97a66"></div><span data-i18n="legend_avail">Libre</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff4d6d44;border:1px solid #ff4d6d66"></div><span data-i18n="legend_occ">Ocupado</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4a9eff44;border:1px solid #4a9eff66"></div><span data-i18n="legend_res">Reservado</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="inicio-actions">
+    <button class="action-btn btn-primary" onclick="navigateTo('mapa')" data-i18n="btn_navigate">🗺️ Ver mapa</button>
+    <button class="action-btn btn-secondary" onclick="openNewReservationModal()" data-i18n="btn_reserve">📋 Reservar</button>
+  </div>
+</div>
+
+<!-- ===== MAP SCREEN ===== -->
+<div class="screen screen-mapa" id="screen-mapa">
+  <!-- Search + filters fixed above map -->
+  <div class="mapa-top-bar">
+    <div class="map-search-bar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5570a0" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="mapSearchInput" placeholder="Buscar estacionamiento..." oninput="filterMapParkings(this.value)">
+    </div>
+    <div class="map-filters">
+      <div class="filter-pill active" onclick="setMapFilter('todos',this)" data-i18n="filter_all">Todos</div>
+      <div class="filter-pill" onclick="setMapFilter('disponible',this)" data-i18n="filter_avail">Disponible</div>
+      <div class="filter-pill" onclick="setMapFilter('economico',this)" data-i18n="filter_cheap">Económico</div>
+      <div class="filter-pill" onclick="setMapFilter('cercano',this)" data-i18n="filter_near">Cercano</div>
+      <div class="filter-pill" onclick="setMapFilter('techado',this)" data-i18n="filter_covered">Techado</div>
+    </div>
+  </div>
+  <!-- Map takes remaining height -->
+  <div id="map-container">
+    <div id="leaflet-map"></div>
+    <div class="map-overlay">
+      <div class="route-info-bar" id="routeInfoBar">
+        <span class="rib-icon">🔵</span>
+        <div class="rib-text">
+          <div class="rib-name" id="ribName">–</div>
+          <div class="rib-dist" id="ribDist">–</div>
+        </div>
+        <button class="rib-close" onclick="clearRoute()">✕</button>
+      </div>
+    </div>
+    <div class="map-recenter-btn" onclick="recenterMap()" title="Mi ubicación">📍</div>
+  </div>
+  <!-- Scrollable parking cards below map -->
+  <div class="mapa-scroll-area">
+    <div class="mbs-section-title" data-i18n="nearby_lots">Estacionamientos cercanos</div>
+    <div class="mbs-cards" id="mbsCards"></div>
+  </div>
+</div>
+
+<!-- ===== RESERVAS SCREEN ===== -->
+<div class="screen screen-reservas" id="screen-reservas">
+  <div style="flex-shrink:0">
+    <div class="reservas-header">
+      <span class="screen-title" data-i18n="nav_reservas">Reservas</span>
+      <button class="new-res-btn" onclick="openNewReservationModal()">
+        <span>＋</span><span data-i18n="new_res">Nueva Reserva</span>
+      </button>
+    </div>
+  </div>
+  <div id="reservasContainer" style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch"></div>
+</div>
+
+<!-- ===== PERFIL SCREEN ===== -->
+<div class="screen screen-perfil" id="screen-perfil">
+  <div style="flex-shrink:0">
+    <div class="perfil-header">
+      <span class="screen-title" data-i18n="nav_perfil">Perfil</span>
+    </div>
+    <div class="perfil-avatar-section">
+      <!-- Circular avatar with pencil overlay -->
+      <div class="avatar-wrap" onclick="document.getElementById('photoInput').click()">
+        <div class="avatar" id="profileAvatar">DT</div>
+        <div class="avatar-pencil">✏️</div>
+      </div>
+      <input type="file" id="photoInput" accept="image/*" onchange="setProfilePhoto(this)">
+      <div class="avatar-info">
+        <div class="avatar-name" id="profileName">Diego Torres</div>
+        <div class="avatar-email" id="profileEmail">diego.torres@gmail.com</div>
+      </div>
+      <button class="edit-profile-btn" onclick="openEditProfileModal()" data-i18n="edit_profile">✏️ Editar perfil</button>
+    </div>
+    <div class="perfil-stats">
+      <div class="perfil-stat">
+        <div class="ps-num" id="profileResCount">4</div>
+        <div class="ps-lbl" data-i18n="nav_reservas">Reservas</div>
+      </div>
+      <div class="perfil-stat">
+        <div class="ps-num">3.5h</div>
+        <div class="ps-lbl" data-i18n="time_saved">Tiempo ahorrado</div>
+      </div>
+    </div>
+    <div class="perfil-menu">
+      <div class="pm-item" onclick="showVehicleInfo()">
+        <div class="pm-item-icon">🚗</div>
+        <div class="pm-item-text">
+          <div class="pm-item-label" data-i18n="vehicle_label">Mi vehículo</div>
+          <div class="pm-item-sub" id="vehicleSub">Toyota Corolla • BCDF-42</div>
+        </div>
+        <span class="pm-item-arrow">›</span>
+      </div>
+      <div class="pm-item" onclick="openNotifModal()">
+        <div class="pm-item-icon">🔔</div>
+        <div class="pm-item-text">
+          <div class="pm-item-label" data-i18n="notif_title">Notificaciones</div>
+          <div class="pm-item-sub" data-i18n="notif_sub">4 activas</div>
+        </div>
+        <span class="pm-item-arrow">›</span>
+      </div>
+      <div class="pm-item" onclick="openPaymentModal()">
+        <div class="pm-item-icon">💳</div>
+        <div class="pm-item-text">
+          <div class="pm-item-label" data-i18n="payment_title">Métodos de pago</div>
+          <div class="pm-item-sub" data-i18n="payment_sub">Visa ••4242</div>
+        </div>
+        <span class="pm-item-arrow">›</span>
+      </div>
+      <div class="pm-item" onclick="openDrawer()">
+        <div class="pm-item-icon">🌐</div>
+        <div class="pm-item-text">
+          <div class="pm-item-label" data-i18n="lang_label">Idioma</div>
+          <div class="pm-item-sub" id="currentLangLabel">Español</div>
+        </div>
+        <span class="pm-item-arrow">›</span>
+      </div>
+    </div>
+  </div>
+  <button class="perfil-logout" onclick="showToast('👋 Hasta pronto!')">
+    <span>🚪</span><span data-i18n="logout">Cerrar sesión</span>
+  </button>
+</div>
+
+<!-- ===== BOTTOM NAV ===== -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="nav-inicio" onclick="navigateTo('inicio')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span data-i18n="nav_inicio">Inicio</span>
+  </button>
+  <button class="nav-btn" id="nav-mapa" onclick="navigateTo('mapa')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+    <span data-i18n="nav_mapa">Mapa</span>
+  </button>
+  <button class="nav-btn" id="nav-reservas" onclick="navigateTo('reservas')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    <span data-i18n="nav_reservas">Reservas</span>
+  </button>
+  <button class="nav-btn" id="nav-perfil" onclick="navigateTo('perfil')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span data-i18n="nav_perfil">Perfil</span>
+  </button>
+</nav>
+
+<!-- ===== CITY MODAL ===== -->
+<div class="full-modal" id="cityModal">
+  <div class="modal-header">
+    <div class="modal-back" onclick="closeCityModal()">‹</div>
+    <span class="modal-title" data-i18n="select_city">Seleccionar ciudad</span>
+  </div>
+  <div class="modal-body">
+    <input class="city-search" type="text" id="citySearchInput" placeholder="Buscar ciudad..." oninput="filterCities(this.value)">
+    <div id="regionsContainer"></div>
+  </div>
+</div>
+
+<!-- ===== SPOT DETAIL BACKDROP + MODAL ===== -->
+<div class="spot-backdrop" id="spotBackdrop" onclick="closeSpotDetail()"></div>
+<div class="bottom-sheet-modal" id="spotDetailModal">
+  <div class="bsm-handle"></div>
+  <div class="bsm-title" id="spotDetailTitle">Espacio A-01</div>
+  <div class="bsm-body">
+    <div class="bsm-row"><span class="bsm-label" data-i18n="status_label">Estado</span><span class="bsm-value" id="spotDetailStatus">–</span></div>
+    <div class="bsm-row"><span class="bsm-label" data-i18n="level_label">Nivel</span><span class="bsm-value" id="spotDetailLevel">–</span></div>
+    <div class="bsm-row"><span class="bsm-label" data-i18n="rate_label">Tarifa</span><span class="bsm-value" id="spotDetailRate">–</span></div>
+    <div class="bsm-row"><span class="bsm-label" data-i18n="type_label">Tipo</span><span class="bsm-value" data-i18n="standard_type">Estándar</span></div>
+  </div>
+  <button class="bsm-book-btn" onclick="bookSpotFromModal()" data-i18n="book_btn">Reservar este espacio</button>
+</div>
+
+<!-- ===== CLOSING TIME NOTIFICATION ===== -->
+<div class="closing-notif" id="closingNotif">
+  <span style="font-size:18px">⏰</span>
+  <span class="closing-notif-text" id="closingNotifText">Cierre en 1 hora</span>
+  <button class="closing-notif-close" onclick="document.getElementById('closingNotif').classList.remove('show')">✕</button>
+</div>
+
+<!-- ===== DB STATUS BADGE ===== -->
+<div class="db-badge" id="dbBadge" style="display:none">
+  <span class="db-dot"></span> DB conectada
+</div>
+
+<!-- ===== NEW RESERVATION MODAL ===== -->
+<div class="full-modal" id="newResModal">
+  <div class="modal-header">
+    <div class="modal-back" onclick="closeNewResModal()">‹</div>
+    <span class="modal-title" data-i18n="new_res_title">Nueva Reserva</span>
+  </div>
+  <div class="modal-body">
+    <div class="step-indicator">
+      <div class="step-dot active" id="sdot1">1</div>
+      <div class="step-line" id="sline1"></div>
+      <div class="step-dot" id="sdot2">2</div>
+      <div class="step-line" id="sline2"></div>
+      <div class="step-dot" id="sdot3">3</div>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="modal-step active" id="step1">
+      <div style="font-size:13px;font-weight:700;color:#c8d8f0;margin-bottom:12px" data-i18n="step1_title">Elegir estacionamiento</div>
+      <div id="parkingListForRes"></div>
+      <div class="modal-nav-btns">
+        <button class="mnb-next" onclick="goStep(2)" data-i18n="next_btn">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="modal-step" id="step2">
+      <div style="font-size:13px;font-weight:700;color:#c8d8f0;margin-bottom:12px" data-i18n="step2_title">Fecha y hora</div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="date_label">Fecha</label>
+        <input class="form-input" type="date" id="resDate">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="time_label">Hora de entrada</label>
+        <input class="form-input" type="time" id="resTime">
+      </div>
+      <div style="background:#162035;border:1px solid #00c97a33;border-radius:12px;padding:12px 14px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:16px">⏱️</span>
+          <span style="font-size:12px;font-weight:700;color:#00c97a" data-i18n="open_duration">Duración libre</span>
+        </div>
+        <div style="font-size:11px;color:#5570a0;line-height:1.5" data-i18n="open_duration_desc">El tiempo corre desde tu llegada. Puedes quedarte hasta 30 min antes del cierre. Recibirás una notificación 1 hora antes de cerrar.</div>
+      </div>
+      <div class="modal-nav-btns">
+        <button class="mnb-prev" onclick="goStep(1)" data-i18n="prev_btn">← Anterior</button>
+        <button class="mnb-next" onclick="goStep(3)" data-i18n="next_btn">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="modal-step" id="step3">
+      <div style="font-size:13px;font-weight:700;color:#c8d8f0;margin-bottom:12px" data-i18n="step3_title">Confirmar reserva</div>
+      <div class="confirm-card" id="confirmCard">
+        <div class="cc-row"><span class="cc-label" data-i18n="parking_label">Estacionamiento</span><span class="cc-value" id="ccParking">–</span></div>
+        <div class="cc-row"><span class="cc-label" data-i18n="date_label">Fecha</span><span class="cc-value" id="ccDate">–</span></div>
+        <div class="cc-row"><span class="cc-label" data-i18n="time_label">Hora</span><span class="cc-value" id="ccTime">–</span></div>
+        <div class="cc-row"><span class="cc-label" data-i18n="rate_label">Tarifa</span><span class="cc-value" id="ccDuration">–</span></div>
+        <div class="cc-row"><span class="cc-label">Cierre del local</span><span class="cc-value" id="ccCost" style="color:#ffb020">–</span></div>
+      </div>
+      <div class="modal-nav-btns">
+        <button class="mnb-prev" onclick="goStep(2)" data-i18n="prev_btn">← Anterior</button>
+      </div>
+      <button class="mnb-confirm" onclick="confirmReservation()" data-i18n="confirm_btn">✓ Confirmar Reserva</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAYMENT MODAL ===== -->
+<div class="full-modal" id="paymentModal">
+  <div class="modal-header">
+    <div class="modal-back" onclick="closeModal('paymentModal')">‹</div>
+    <span class="modal-title" data-i18n="payment_title">Métodos de pago</span>
+  </div>
+  <div class="modal-body">
+    <div class="credit-card-visual" id="creditCardVisual">
+      <div class="ccv-shine"></div>
+      <div class="ccv-bank">PARKIUM BANK</div>
+      <div class="ccv-chip"></div>
+      <div class="ccv-number" id="ccvNumber">•••• •••• •••• 4242</div>
+      <div class="ccv-bottom">
+        <div class="ccv-name" id="ccvName">CARLOS MUÑOZ</div>
+        <div class="ccv-expiry">
+          <div class="ccv-expiry-label">EXPIRY</div>
+          <div class="ccv-expiry-val" id="ccvExpiry">12/27</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-btns">
+      <button class="card-edit-btn" onclick="toggleCardEdit()" data-i18n="edit_card">✏️ Editar tarjeta</button>
+      <button class="card-add-btn" onclick="showToast('+ Tarjeta agregada')" data-i18n="add_card">＋ Agregar tarjeta</button>
+    </div>
+    <div class="card-edit-form" id="cardEditForm">
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label" data-i18n="card_number">Número de tarjeta</label>
+        <input class="form-input" type="text" id="cardNumInput" placeholder="XXXX XXXX XXXX XXXX" maxlength="19" oninput="formatCardNumber(this)">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="card_holder">Nombre del titular</label>
+        <input class="form-input" type="text" id="cardNameInput" placeholder="NOMBRE APELLIDO">
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1">
+          <label class="form-label" data-i18n="expiry_label">Vencimiento</label>
+          <input class="form-input" type="text" id="cardExpiryInput" placeholder="MM/YY" maxlength="5">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">CVV</label>
+          <input class="form-input" type="password" id="cardCvvInput" placeholder="•••" maxlength="4">
+        </div>
+      </div>
+      <button class="card-save-btn" onclick="saveCard()" data-i18n="save_btn">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== NOTIFICATIONS MODAL ===== -->
+<div class="full-modal" id="notifModal">
+  <div class="modal-header">
+    <div class="modal-back" onclick="closeModal('notifModal')">‹</div>
+    <span class="modal-title" data-i18n="notif_title">Notificaciones</span>
+  </div>
+  <div class="modal-body">
+    <div id="notifList"></div>
+    <button class="notif-save-btn" onclick="saveNotifs()" data-i18n="save_btn">💾 Guardar cambios</button>
+  </div>
+</div>
+
+<!-- ===== EDIT PROFILE MODAL ===== -->
+<div class="full-modal" id="editProfileModal">
+  <div class="modal-header">
+    <div class="modal-back" onclick="closeModal('editProfileModal')">‹</div>
+    <span class="modal-title" data-i18n="edit_profile">Editar perfil</span>
+  </div>
+  <div class="modal-body">
+    <div class="form-group">
+      <label class="form-label" data-i18n="full_name">Nombre completo</label>
+      <input class="form-input" type="text" id="editName">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" type="email" id="editEmail">
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="phone_label">Teléfono</label>
+      <input class="form-input" type="tel" id="editPhone">
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="plate_label">Patente del vehículo</label>
+      <input class="form-input" type="text" id="editPlate">
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="vehicle_type">Tipo de vehículo</label>
+      <div class="duration-pills" id="vehicleTypePills">
+        <div class="dur-pill active" onclick="selectVehicleType('Auto',this)" data-i18n="type_auto">Auto</div>
+        <div class="dur-pill" onclick="selectVehicleType('SUV',this)">SUV</div>
+        <div class="dur-pill" onclick="selectVehicleType('Camioneta',this)" data-i18n="type_truck">Camioneta</div>
+      </div>
+    </div>
+    <button class="card-save-btn" onclick="saveProfile()" data-i18n="save_changes">💾 Guardar cambios</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+</div><!-- /app -->
+</div><!-- /phone-outer -->
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const TALCA_MALLS = [
+  { id:'m1', name:'Arauco Maule', address:'Av. Lircay 2249', lat:-35.4340, lng:-71.6508, total:350, avail:78, price:800, rating:4.3, covered:true, icon:'🏬', tags:['disponible','techado','cercano'], closes:'22:00' },
+  { id:'m2', name:'Falabella Talca', address:'1 Sur 898', lat:-35.4279, lng:-71.6561, total:120, avail:14, price:600, rating:4.0, covered:true, icon:'🛍️', tags:['disponible','techado','economico'], closes:'21:00' },
+  { id:'m3', name:'Ripley Talca', address:'1 Sur / 5 Oriente', lat:-35.4272, lng:-71.6539, total:100, avail:0, price:600, rating:3.9, covered:false, icon:'🏪', tags:['economico'], closes:'21:00' },
+  { id:'m4', name:'Portal Centro Talca', address:'2 Sur 770', lat:-35.4295, lng:-71.6572, total:80, avail:22, price:500, rating:4.1, covered:false, icon:'🏙️', tags:['disponible','economico','cercano'], closes:'20:00' },
+  { id:'m5', name:'Mall Plaza Maule', address:'Av. Carlos Schorr 130', lat:-35.4388, lng:-71.6434, total:600, avail:185, price:700, rating:4.6, covered:true, icon:'🏬', tags:['disponible','techado'], closes:'22:30' },
+  { id:'m6', name:'Paseo Centro Comercial', address:'1 Norte / 7 Oriente', lat:-35.4251, lng:-71.6527, total:60, avail:9, price:400, rating:3.7, covered:false, icon:'🏢', tags:['disponible','economico'], closes:'21:30' },
+];
+
+const CHILEAN_REGIONS = [
+  { name:'Arica y Parinacota', cities:['Arica','Putre'] },
+  { name:'Tarapacá', cities:['Iquique','Alto Hospicio','Pozo Almonte'] },
+  { name:'Antofagasta', cities:['Antofagasta','Calama','Tocopilla','Mejillones'] },
+  { name:'Atacama', cities:['Copiapó','Vallenar','Chañaral','Diego de Almagro'] },
+  { name:'Coquimbo', cities:['La Serena','Coquimbo','Ovalle','Illapel','Vicuña'] },
+  { name:'Valparaíso', cities:['Valparaíso','Viña del Mar','Quilpué','Villa Alemana','San Antonio','Los Andes','Quillota','Limache'] },
+  { name:'Metropolitana de Santiago', cities:['Santiago','Maipú','Puente Alto','Las Condes','San Bernardo','Providencia','Ñuñoa','La Florida','Peñalolén','Lo Barnechea'] },
+  { name:"O'Higgins", cities:['Rancagua','San Fernando','Pichilemu','Rengo','Machalí'] },
+  { name:'Maule', cities:['Talca','Curicó','Linares','Cauquenes','Constitución','Parral','San Javier'] },
+  { name:'Ñuble', cities:['Chillán','San Carlos','Bulnes','Yungay','Coihueco'] },
+  { name:'Biobío', cities:['Concepción','Talcahuano','Los Ángeles','Chiguayante','Coronel','Hualpén'] },
+  { name:'La Araucanía', cities:['Temuco','Villarrica','Pucón','Angol','Victoria','Nueva Imperial'] },
+  { name:'Los Ríos', cities:['Valdivia','La Unión','Río Bueno','Panguipulli','Futrono'] },
+  { name:'Los Lagos', cities:['Puerto Montt','Osorno','Castro','Puerto Varas','Ancud','Calbuco'] },
+  { name:'Aysén', cities:['Coyhaique','Puerto Aysén','Chile Chico','Cochrane'] },
+  { name:'Magallanes', cities:['Punta Arenas','Puerto Natales','Puerto Williams','Porvenir'] },
+];
+
+let reservationsData = [
+  { id:'r1', mallId:'m1', name:'Arauco Maule', spot:'A-14', icon:'🏬', status:'active', date:'Hoy', time:'09:30', duration:2, price:1600 },
+  { id:'r2', mallId:'m2', name:'Falabella Talca', spot:'C-03', icon:'🛍️', status:'upcoming', date:'Mañana', time:'14:00', duration:1, price:600 },
+  { id:'r3', mallId:'m5', name:'Mall Plaza Maule', spot:'B-22', icon:'🏬', status:'used', date:'05/06/2026', time:'10:00', duration:3, price:2100 },
+  { id:'r4', mallId:'m4', name:'Portal Centro Talca', spot:'D-07', icon:'🏙️', status:'used', date:'01/06/2026', time:'16:30', duration:1, price:500 },
+];
+
+let profileData = { name:'Diego Torres', email:'diego.torres@gmail.com', phone:'+56 9 8765 4321', plate:'BCDF-42', vehicle:'Auto' };
+let cardData = { number:'•••• •••• •••• 4242', name:'DIEGO TORRES', expiry:'12/27' };
+let notifState = { reservas:true, disponibilidad:true, demanda:false, recordatorios:true, ofertas:false };
+let currentLang = 'es';
+let selectedCity = 'Talca, Chile';
+let leafletMap = null;
+let userMarker = null;
+let currentRoute = null;
+let markers = {};
+let selectedMallId = null;
+let selectedSpot = null;
+let currentLevel = 1;
+let newResStep = 1;
+let newResDuration = 1;
+let newResSelectedMall = null;
+let newResVehicleType = 'Auto';
+let activeTimerInterval = null;
+let mapFilter = 'todos';
+
+// ============================================================
+// TRANSLATIONS
+// ============================================================
+const translations = {
+  es: {
+    drawer_sub:'Estacionamiento inteligente', nav_label:'Navegación', nav_inicio:'Inicio',
+    nav_mapa:'Mapa', nav_reservas:'Reservas', nav_perfil:'Perfil', settings_label:'Configuración',
+    notif_title:'Notificaciones', payment_title:'Métodos de pago', vehicle_label:'Mi vehículo',
+    lang_label:'Idioma', logout:'Cerrar sesión', stat_total:'Total', stat_avail:'Disponibles',
+    stat_occ:'Ocupados', stat_occ2:'Ocup.', alert_demand:'Alta demanda en zona central',
+    spots_title:'Mapa de espacios', legend_avail:'Libre', legend_occ:'Ocupado', legend_res:'Reservado',
+    btn_navigate:'🗺️ Ver mapa', btn_reserve:'📋 Reservar', filter_all:'Todos',
+    filter_avail:'Disponible', filter_cheap:'Económico', filter_near:'Cercano', filter_covered:'Techado',
+    nearby_lots:'Estacionamientos cercanos', new_res:'Nueva Reserva', edit_profile:'Editar perfil',
+    time_saved:'Tiempo ahorrado', notif_sub:'4 activas', payment_sub:'Visa ••4242',
+    select_city:'Seleccionar ciudad', step1_title:'Elegir estacionamiento', step2_title:'Fecha y hora',
+    step3_title:'Confirmar reserva', date_label:'Fecha', time_label:'Hora de entrada',
+    duration_label:'Duración', cost_label:'Costo estimado', parking_label:'Estacionamiento',
+    next_btn:'Siguiente →', prev_btn:'← Anterior', confirm_btn:'✓ Confirmar Reserva',
+    edit_card:'✏️ Editar tarjeta', add_card:'＋ Agregar tarjeta', save_btn:'💾 Guardar',
+    card_number:'Número de tarjeta', card_holder:'Nombre del titular', expiry_label:'Vencimiento',
+    full_name:'Nombre completo', phone_label:'Teléfono', plate_label:'Patente del vehículo',
+    vehicle_type:'Tipo de vehículo', type_auto:'Auto', type_truck:'Camioneta',
+    save_changes:'💾 Guardar cambios', status_label:'Estado', level_label:'Nivel',
+    rate_label:'Tarifa', type_label:'Tipo', standard_type:'Estándar', book_btn:'Reservar este espacio',
+    new_res_title:'Nueva Reserva', notif_label0:'Reservas activas', notif_desc0:'Tu reserva vence pronto',
+    notif_label1:'Disponibilidad', notif_desc1:'Nuevos espacios libres',
+    notif_label2:'Alta demanda', notif_desc2:'Zonas con poca disponibilidad',
+    notif_label3:'Recordatorios', notif_desc3:'30 min antes de tu reserva',
+    notif_label4:'Ofertas y promociones', notif_desc4:'Descuentos y novedades',
+    badge_active:'En uso', badge_upcoming:'Próxima', badge_used:'Usada',
+    res_from:'Desde', res_duration:'Duración', res_cost:'Costo', res_navigate:'Navegar',
+    res_cancel:'Cancelar', open_duration:'Duración libre',
+    open_duration_desc:'El tiempo corre desde tu llegada. Puedes quedarte hasta 30 min antes del cierre. Recibirás una notificación 1 hora antes de cerrar.',
+  },
+  en: {
+    drawer_sub:'Smart parking', nav_label:'Navigation', nav_inicio:'Home',
+    nav_mapa:'Map', nav_reservas:'Reservations', nav_perfil:'Profile', settings_label:'Settings',
+    notif_title:'Notifications', payment_title:'Payment methods', vehicle_label:'My vehicle',
+    lang_label:'Language', logout:'Log out', stat_total:'Total', stat_avail:'Available',
+    stat_occ:'Occupied', stat_occ2:'Occ.', alert_demand:'High demand in central area',
+    spots_title:'Spot map', legend_avail:'Free', legend_occ:'Occupied', legend_res:'Reserved',
+    btn_navigate:'🗺️ View map', btn_reserve:'📋 Reserve', filter_all:'All',
+    filter_avail:'Available', filter_cheap:'Budget', filter_near:'Nearby', filter_covered:'Covered',
+    nearby_lots:'Nearby parking', new_res:'New Reservation', edit_profile:'Edit profile',
+    time_saved:'Time saved', notif_sub:'4 active', payment_sub:'Visa ••4242',
+    select_city:'Select city', step1_title:'Choose parking', step2_title:'Date & time',
+    step3_title:'Confirm reservation', date_label:'Date', time_label:'Entry time',
+    duration_label:'Duration', cost_label:'Estimated cost', parking_label:'Parking',
+    next_btn:'Next →', prev_btn:'← Back', confirm_btn:'✓ Confirm Reservation',
+    edit_card:'✏️ Edit card', add_card:'＋ Add card', save_btn:'💾 Save',
+    card_number:'Card number', card_holder:'Cardholder name', expiry_label:'Expiry',
+    full_name:'Full name', phone_label:'Phone', plate_label:'License plate',
+    vehicle_type:'Vehicle type', type_auto:'Car', type_truck:'Truck',
+    save_changes:'💾 Save changes', status_label:'Status', level_label:'Level',
+    rate_label:'Rate', type_label:'Type', standard_type:'Standard', book_btn:'Book this spot',
+    new_res_title:'New Reservation', notif_label0:'Active reservations', notif_desc0:'Your reservation is expiring soon',
+    notif_label1:'Availability', notif_desc1:'New spots available',
+    notif_label2:'High demand', notif_desc2:'Areas with low availability',
+    notif_label3:'Reminders', notif_desc3:'30 min before your reservation',
+    notif_label4:'Offers & promotions', notif_desc4:'Discounts and news',
+    badge_active:'Active', badge_upcoming:'Upcoming', badge_used:'Used',
+    res_from:'From', res_duration:'Duration', res_cost:'Cost', res_navigate:'Navigate',
+    res_cancel:'Cancel', open_duration:'Open-ended stay',
+    open_duration_desc:'Timer starts when you arrive. You can stay until 30 min before closing. You\'ll get a notification 1 hour before closing.',
+  },
+  map: {
+    drawer_sub:'Kimeltun tañi wente winka ruka', nav_inicio:'Inagpeyüm', nav_mapa:'Mapu',
+    nav_reservas:'Reservaciones', nav_perfil:'Ñi mongen', stat_total:'Tañi', stat_avail:'Küpalechi',
+    stat_occ:'Kaleltuchi', alert_demand:'Dewma trawün mapu mew', spots_title:'Mapu küpalechi',
+    legend_avail:'Küpalechi', legend_occ:'Kaleltuchi', legend_res:'Reservado',
+    btn_navigate:'🗺️ Mapuley', btn_reserve:'📋 Reservaley', new_res:'Küme Reservación',
+    logout:'Femgechi', badge_active:'Puwma', badge_upcoming:'Ayiwkülechi', badge_used:'Femgechi',
+    nearby_lots:'Küme mapu', filter_all:'Kimlu', filter_avail:'Küpalechi', filter_cheap:'Pichi silver',
+    filter_near:'Mülechi', filter_covered:'Üfüm', select_city:'Eluafimi lof',
+    open_duration:'Mülechi wente', open_duration_desc:'Tañi mongen küpan. 30 minuto mew kimafimi.',
+    edit_profile:'Kishu ñi lof', save_changes:'💾 Kimuafimi', book_btn:'Reservaley tañi mapu',
+    payment_title:'Plata küpaley', notif_title:'Küpalchi kimün', lang_label:'Dungun',
+  },
+  ht: {
+    drawer_sub:'Pakin entèlijan', nav_inicio:'Akèy', nav_mapa:'Kat',
+    nav_reservas:'Rezèvasyon', nav_perfil:'Pwofil', stat_total:'Total', stat_avail:'Disponib',
+    stat_occ:'Okipe', alert_demand:'Anpil moun nan sant lavil', spots_title:'Kat espas',
+    legend_avail:'Lib', legend_occ:'Okipe', legend_res:'Rezève',
+    btn_navigate:'🗺️ Wè kat', btn_reserve:'📋 Rezève', new_res:'Nouvo Rezèvasyon',
+    logout:'Dekonekte', badge_active:'Nan itilizasyon', badge_upcoming:'Pwochen', badge_used:'Fini',
+    nearby_lots:'Pakin toupre', filter_all:'Tout', filter_avail:'Disponib', filter_cheap:'Bon mache',
+    filter_near:'Pre', filter_covered:'Kouvri', select_city:'Chwazi vil',
+    open_duration:'Dire lib', open_duration_desc:'Kont tan kòmanse lè ou rive. Ou ka rete jiska 30 minit anvan fèmen.',
+    edit_profile:'Edite pwofil', save_changes:'💾 Sove', book_btn:'Rezève espas sa a',
+    payment_title:'Metòd peman', notif_title:'Notifikasyon', lang_label:'Lang',
+  },
+  zh: {
+    drawer_sub:'智能停车管理', nav_inicio:'首页', nav_mapa:'地图',
+    nav_reservas:'预约', nav_perfil:'个人', stat_total:'总数', stat_avail:'空闲',
+    stat_occ:'占用', alert_demand:'市中心需求高', spots_title:'车位地图',
+    legend_avail:'空闲', legend_occ:'占用', legend_res:'已预约',
+    btn_navigate:'🗺️ 查看地图', btn_reserve:'📋 预约', new_res:'新预约',
+    logout:'退出登录', badge_active:'使用中', badge_upcoming:'即将', badge_used:'已用',
+    nearby_lots:'附近停车场', filter_all:'全部', filter_avail:'空闲', filter_cheap:'经济',
+    filter_near:'附近', filter_covered:'有顶', select_city:'选择城市',
+    open_duration:'自由时长', open_duration_desc:'到达后开始计时。可停留至关闭前30分钟。关闭前1小时将收到通知。',
+    edit_profile:'编辑资料', save_changes:'💾 保存', book_btn:'预约此车位',
+    payment_title:'支付方式', notif_title:'通知', lang_label:'语言',
+  },
+  pt: {
+    drawer_sub:'Estacionamento inteligente', nav_inicio:'Início', nav_mapa:'Mapa',
+    nav_reservas:'Reservas', nav_perfil:'Perfil', stat_total:'Total', stat_avail:'Disponíveis',
+    stat_occ:'Ocupados', alert_demand:'Alta demanda no centro', spots_title:'Mapa de vagas',
+    legend_avail:'Livre', legend_occ:'Ocupado', legend_res:'Reservado',
+    btn_navigate:'🗺️ Ver mapa', btn_reserve:'📋 Reservar', new_res:'Nova Reserva',
+    logout:'Sair', badge_active:'Em uso', badge_upcoming:'Próxima', badge_used:'Usada',
+    nearby_lots:'Estacionamentos próximos', filter_all:'Todos', filter_avail:'Disponível', filter_cheap:'Econômico',
+    filter_near:'Próximo', filter_covered:'Coberto', select_city:'Selecionar cidade',
+    open_duration:'Duração livre', open_duration_desc:'O tempo começa quando você chega. Pode ficar até 30 min antes do fechamento.',
+    edit_profile:'Editar perfil', save_changes:'💾 Salvar', book_btn:'Reservar esta vaga',
+    payment_title:'Métodos de pagamento', notif_title:'Notificações', lang_label:'Idioma',
+  }
+};
+
+function t(key) { return (translations[currentLang] && translations[currentLang][key]) || (translations['es'][key]) || key; }
+
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = t(key);
+    if (val && val !== key) el.textContent = val;
+  });
+  const sel = document.getElementById('langSelect');
+  if (sel) sel.value = lang;
+  const langNames = {es:'Español',en:'English',map:'Mapudungun',ht:'Kreyòl',zh:'中文',pt:'Português'};
+  const lbl = document.getElementById('currentLangLabel');
+  if (lbl) lbl.textContent = langNames[lang] || lang;
+  renderReservations();
+  renderNotifList();
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function navigateTo(screen) {
+  closeSpotDetail();
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + screen).classList.add('active');
+  const nb = document.getElementById('nav-' + screen);
+  if (nb) nb.classList.add('active');
+  if (screen === 'mapa') {
+    setTimeout(() => { if (leafletMap) leafletMap.invalidateSize(); }, 300);
+  }
+  if (screen === 'perfil') {
+    document.getElementById('profileResCount').textContent = reservationsData.length;
+  }
+}
+
+// ============================================================
+// DRAWER
+// ============================================================
+function openDrawer() {
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('open');
+}
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// SPOT GRID (INICIO)
+// ============================================================
+function buildSpotData(level) {
+  const rows = ['A','B','C','D','E','F'];
+  const cols = 8;
+  let occupied=[3,4,8,9,13,16,18,20,24,25,27,30,33,35,38,40,43];
+  let reserved=[2,10,22,37];
+  if(level===2){occupied=[1,5,7,11,15,19,22,26,28,31,34,36,39,41,44];reserved=[4,13,25,42];}
+  if(level===3){occupied=[2,4,6,12,16,20,23,27,29,32,35,38,40,43,46];reserved=[7,17,30,44];}
+  const spots=[];
+  let idx=0;
+  rows.forEach(r=>{
+    for(let c=1;c<=cols;c++){
+      idx++;
+      const id=`${r}-${String(c).padStart(2,'0')}`;
+      let type='avail';
+      if(occupied.includes(idx)) type='occ';
+      if(reserved.includes(idx)) type='reserved';
+      spots.push({id,type,level});
+    }
+  });
+  return spots;
+}
+
+let allSpots = buildSpotData(1);
+
+function renderSpotGrid(filter='') {
+  const container = document.getElementById('spotGrid');
+
+  // ── Layout constants ──
+  const VW = 358;
+  const LABEL = 18;   // row-letter gutter on left
+  const COLS = 8, ROWS = 6;
+  const SW = 38, SH = 44;   // spot width / height (taller = more realistic)
+  const GAP = 3;             // gap between spots
+  const LANE = 30;           // driving-lane height
+  const HDR = 14;            // column-number header strip
+  const FOOT = 22;           // entrance footer strip
+
+  // Spot grid starts after the label gutter, centred in remaining width
+  const totalW = COLS * SW + (COLS - 1) * GAP;
+  const startX = LABEL + Math.floor((VW - LABEL - totalW) / 2);
+
+  // Row A-F: pairs AB / CD / EF separated by driving lanes
+  //   A and B face each other (A heads up toward lane1, B heads down toward lane1)
+  const lane1Y = HDR + SH * 2 + GAP * 2;          // between B and C
+  const lane2Y = HDR + SH * 4 + GAP * 4 + LANE + GAP; // between D and E
+  const rowY = [
+    HDR,                                           // A
+    HDR + SH + GAP,                               // B
+    lane1Y + LANE + GAP,                          // C
+    lane1Y + LANE + GAP + SH + GAP,              // D
+    lane2Y + LANE + GAP,                          // E
+    lane2Y + LANE + GAP + SH + GAP,              // F
+  ];
+  const VH = rowY[5] + SH + FOOT;
+  const rowLabels = ['A','B','C','D','E','F'];
+  const laneYs = [lane1Y, lane2Y];
+  const arrowDirs = ['▶','◀'];
+
+  // ── SVG open + defs ──
+  let s = `<svg viewBox="0 0 ${VW} ${VH}" width="100%" height="${VH}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto">`;
+  s += `<defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1b1b1b"/>
+      <stop offset="100%" stop-color="#202020"/>
+    </linearGradient>
+    <linearGradient id="laneGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2b2b2b"/>
+      <stop offset="100%" stop-color="#252525"/>
+    </linearGradient>
+    <linearGradient id="carBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#484848"/>
+      <stop offset="100%" stop-color="#333"/>
+    </linearGradient>
+    <filter id="glowG" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowB" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>`;
+
+  // ── Background ──
+  s += `<rect width="${VW}" height="${VH}" fill="url(#bgGrad)" rx="0"/>`;
+
+  // subtle asphalt texture dots
+  for (let gx = 6; gx < VW; gx += 14) {
+    for (let gy = 0; gy < VH; gy += 14) {
+      s += `<circle cx="${gx + (gy%3)}" cy="${gy}" r="0.6" fill="#fff" opacity="0.018"/>`;
+    }
+  }
+
+  // ── Driving lanes ──
+  laneYs.forEach((ly, li) => {
+    s += `<rect x="0" y="${ly}" width="${VW}" height="${LANE}" fill="url(#laneGrad)"/>`;
+    // subtle side shadows on lane edges
+    s += `<rect x="0" y="${ly}" width="${VW}" height="2" fill="#000" opacity="0.25"/>`;
+    s += `<rect x="0" y="${ly+LANE-2}" width="${VW}" height="2" fill="#000" opacity="0.25"/>`;
+    // yellow dashed centre line
+    for (let x = 14; x < VW - 8; x += 20) {
+      s += `<rect x="${x}" y="${ly + LANE/2 - 1.5}" width="11" height="3" fill="#e8b800" rx="1.5" opacity="0.65"/>`;
+    }
+    // direction arrows (two per lane)
+    [VW * 0.25, VW * 0.72].forEach(ax => {
+      s += `<text x="${ax}" y="${ly + LANE/2 + 4.5}" text-anchor="middle" fill="#e8b800" font-size="10" opacity="0.45" font-family="sans-serif">${arrowDirs[li]}</text>`;
+    });
+  });
+
+  // ── Column header numbers ──
+  for (let c = 0; c < COLS; c++) {
+    const cx = startX + c * (SW + GAP) + SW / 2;
+    s += `<text x="${cx}" y="${HDR - 2}" text-anchor="middle" fill="#354f72" font-size="8" font-family="sans-serif" font-weight="700">${c+1}</text>`;
+  }
+
+  // ── Entrance indicator ──
+  const entX = startX + totalW / 2;
+  s += `<text x="${entX}" y="${VH - 5}" text-anchor="middle" fill="#354f72" font-size="8.5" font-family="sans-serif" letter-spacing="2.5">ENTRADA  ↑</text>`;
+  s += `<line x1="${startX}" y1="${VH - FOOT + 3}" x2="${startX + totalW}" y2="${VH - FOOT + 3}" stroke="#354f72" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.5"/>`;
+
+  // ── Spots ──
+  allSpots.forEach((spot, idx) => {
+    const col = idx % COLS;
+    const ri  = Math.floor(idx / COLS);
+    if (ri >= ROWS) return;
+    if (filter && !spot.id.toLowerCase().includes(filter.toLowerCase())) return;
+
+    const x = startX + col * (SW + GAP);
+    const y = rowY[ri];
+    const faceUp = ri % 2 === 0; // A,C,E face up; B,D,F face down
+
+    // Row letter label (left gutter, once per row)
+    if (col === 0) {
+      s += `<text x="${LABEL / 2}" y="${y + SH / 2 + 4}" text-anchor="middle" fill="#3a5878" font-size="9" font-weight="800" font-family="sans-serif">${rowLabels[ri]}</text>`;
+    }
+
+    // Spot divider lines
+    if (col < COLS - 1) {
+      s += `<line x1="${x+SW+1}" y1="${y+4}" x2="${x+SW+1}" y2="${y+SH-4}" stroke="#fff" stroke-width="0.4" opacity="0.12"/>`;
+    }
+
+    // ── Available ──
+    if (spot.type === 'avail') {
+      const oc = `onclick="showSpotDetail({id:'${spot.id}',type:'${spot.type}',level:${spot.level}})"`;
+      // outer glow rect
+      s += `<rect x="${x-1}" y="${y-1}" width="${SW+2}" height="${SH+2}" fill="none" stroke="#00c97a" stroke-width="0.6" rx="3" opacity="0.25"/>`;
+      // spot background
+      s += `<rect x="${x}" y="${y}" width="${SW}" height="${SH}" fill="#00c97a0e" stroke="#00c97a" stroke-width="1.4" rx="2.5" cursor="pointer" ${oc} filter="url(#glowG)"/>`;
+      // parking lines (two vertical white lines simulating bay stripes)
+      const lx1 = x + Math.floor(SW * 0.32), lx2 = x + Math.floor(SW * 0.68);
+      s += `<line x1="${lx1}" y1="${y+3}" x2="${lx1}" y2="${y+SH-3}" stroke="#fff" stroke-width="0.5" opacity="0.1"/>`;
+      s += `<line x1="${lx2}" y1="${y+3}" x2="${lx2}" y2="${y+SH-3}" stroke="#fff" stroke-width="0.5" opacity="0.1"/>`;
+      // P symbol
+      s += `<text x="${x+SW/2}" y="${y+SH*0.55+4}" text-anchor="middle" fill="#00c97a" font-size="13" font-weight="900" font-family="sans-serif" cursor="pointer" ${oc}>P</text>`;
+      // spot ID below P
+      s += `<text x="${x+SW/2}" y="${y+SH-5}" text-anchor="middle" fill="#00c97a" font-size="6.5" font-weight="700" font-family="sans-serif" opacity="0.75" cursor="pointer" ${oc}>${spot.id}</text>`;
+
+    // ── Reserved ──
+    } else if (spot.type === 'reserved') {
+      s += `<rect x="${x}" y="${y}" width="${SW}" height="${SH}" fill="#4a9eff0c" stroke="#4a9eff" stroke-width="1.4" rx="2.5"/>`;
+      s += `<text x="${x+SW/2}" y="${y+SH*0.55+4}" text-anchor="middle" fill="#4a9eff" font-size="13" font-weight="900" font-family="sans-serif">R</text>`;
+      s += `<text x="${x+SW/2}" y="${y+SH-5}" text-anchor="middle" fill="#4a9eff" font-size="6.5" font-weight="700" font-family="sans-serif" opacity="0.7">${spot.id}</text>`;
+
+    // ── Occupied (car) ──
+    } else {
+      s += `<rect x="${x}" y="${y}" width="${SW}" height="${SH}" fill="#212121" stroke="#2e2e2e" stroke-width="1" rx="2.5"/>`;
+
+      // Car body — margin 3px inside spot
+      const m = 3;
+      const bx = x + m, by = y + m, bw = SW - m*2, bh = SH - m*2;
+
+      // Car shadow beneath
+      s += `<rect x="${bx+1}" y="${by+2}" width="${bw}" height="${bh}" fill="#000" rx="5" opacity="0.35"/>`;
+      // Car main body
+      s += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="url(#carBody)" rx="5"/>`;
+
+      // Hood / trunk (lighter strip facing the lane)
+      const hoodH = Math.round(bh * 0.22);
+      const hoodY = faceUp ? by : by + bh - hoodH;
+      s += `<rect x="${bx+2}" y="${hoodY}" width="${bw-4}" height="${hoodH}" fill="#555" rx="3"/>`;
+
+      // Windshield (semi-transparent blue-grey glass)
+      const wsH = Math.round(bh * 0.20);
+      const wsY = faceUp ? by + hoodH : by + bh - hoodH - wsH;
+      s += `<rect x="${bx+3}" y="${wsY}" width="${bw-6}" height="${wsH}" fill="#1e3a54" rx="2" opacity="0.9"/>`;
+      // windshield glare line
+      s += `<line x1="${bx+5}" y1="${wsY+3}" x2="${bx+bw-5}" y2="${wsY+3}" stroke="#fff" stroke-width="0.6" opacity="0.2"/>`;
+
+      // Roof (slightly lighter centre)
+      const roofY = faceUp ? wsY + wsH : by + hoodH + wsH;
+      const roofH = bh - hoodH - wsH*2 - (faceUp ? 0 : 0);
+      if (roofH > 2) {
+        s += `<rect x="${bx+2}" y="${faceUp ? wsY+wsH : wsY+wsH}" width="${bw-4}" height="${Math.max(roofH,4)}" fill="#4a4a4a" rx="2"/>`;
+        // centre stripe
+        s += `<rect x="${bx+bw/2-2}" y="${faceUp ? wsY+wsH+1 : wsY+wsH+1}" width="4" height="${Math.max(roofH-2,2)}" fill="#555" rx="1" opacity="0.5"/>`;
+      }
+
+      // Rear windshield
+      const rws = faceUp ? by + bh - hoodH - wsH : by + hoodH;
+      s += `<rect x="${bx+3}" y="${rws}" width="${bw-6}" height="${wsH}" fill="#1a2e3e" rx="2" opacity="0.8"/>`;
+
+      // Wheels – 4 circles at corners
+      const wr = 2.8;
+      [[bx+wr+0.5, by+wr],[bx+bw-wr-0.5, by+wr],
+       [bx+wr+0.5, by+bh-wr],[bx+bw-wr-0.5, by+bh-wr]].forEach(([wx,wy]) => {
+        s += `<circle cx="${wx}" cy="${wy}" r="${wr+0.5}" fill="#111"/>`;
+        s += `<circle cx="${wx}" cy="${wy}" r="${wr-0.8}" fill="#2a2a2a"/>`;
+      });
+    }
+
+    // Handicap – first spot of row E
+    if (col === 0 && ri === 4 && spot.type === 'avail') {
+      s += `<text x="${x+SW/2}" y="${y+SH*0.55+4}" text-anchor="middle" font-size="14" opacity="0.5">♿</text>`;
+    }
+  });
+
+  s += `</svg>`;
+  container.innerHTML = s;
+}
+
+function selectLevel(n, btn) {
+  currentLevel = n;
+  document.querySelectorAll('.level-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  allSpots = buildSpotData(n);
+  renderSpotGrid(document.getElementById('spotSearch').value);
+}
+
+function filterSpots(v) { renderSpotGrid(v); }
+
+function showSpotDetail(spot) {
+  selectedSpot = spot;
+  document.getElementById('spotDetailTitle').textContent = `Espacio ${spot.id}`;
+  document.getElementById('spotDetailStatus').textContent = '🟢 Disponible';
+  document.getElementById('spotDetailLevel').textContent = `Nivel ${spot.level}`;
+  document.getElementById('spotDetailRate').textContent = '$600/hora';
+  document.getElementById('spotDetailModal').classList.add('open');
+  document.getElementById('spotBackdrop').classList.add('open');
+}
+
+function closeSpotDetail() {
+  document.getElementById('spotDetailModal').classList.remove('open');
+  document.getElementById('spotBackdrop').classList.remove('open');
+}
+
+function bookSpotFromModal() {
+  closeSpotDetail();
+  openNewReservationModal();
+}
+
+// ============================================================
+// MAP (LEAFLET)
+// ============================================================
+function initMap() {
+  if (leafletMap) return;
+  leafletMap = L.map('leaflet-map', {
+    center: [-35.4264, -71.6553],
+    zoom: 14,
+    zoomControl: false,
+    attributionControl: false
+  });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; CartoDB',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(leafletMap);
+
+  renderMapMarkers(TALCA_MALLS);
+  renderMapCards(TALCA_MALLS);
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const {latitude:lat, longitude:lng} = pos.coords;
+      userMarker = L.circleMarker([lat,lng], {
+        radius: 8, fillColor: '#4a9eff', color: '#fff', weight: 2, fillOpacity: 1
+      }).addTo(leafletMap);
+      leafletMap.setView([lat,lng], 14);
+    }, () => {});
+  }
+}
+
+function makeMarkerIcon(mall) {
+  let cls = mall.avail > 20 ? 'marker-avail' : mall.avail > 0 ? 'marker-low' : 'marker-full';
+  const html = `<div class="custom-marker ${cls}">${mall.avail > 0 ? mall.avail : '✕'}</div>`;
+  return L.divIcon({ html, className: '', iconSize:[32,32], iconAnchor:[16,16] });
+}
+
+function renderMapMarkers(malls) {
+  Object.values(markers).forEach(m => m.remove());
+  markers = {};
+  malls.forEach(mall => {
+    const m = L.marker([mall.lat, mall.lng], { icon: makeMarkerIcon(mall) })
+      .addTo(leafletMap)
+      .on('click', () => selectMapParking(mall.id));
+    markers[mall.id] = m;
+  });
+}
+
+function renderMapCards(malls) {
+  const container = document.getElementById('mbsCards');
+  container.innerHTML = '';
+  malls.forEach(mall => {
+    const availClass = mall.avail > 20 ? 'ok' : mall.avail > 0 ? 'low' : 'full';
+    const availText = mall.avail > 0 ? `${mall.avail} disponibles` : 'Sin disponibilidad';
+    const card = document.createElement('div');
+    card.className = 'mbs-card' + (selectedMallId === mall.id ? ' selected' : '');
+    card.id = 'mbs-' + mall.id;
+    card.innerHTML = `
+      <div class="mbs-card-icon">${mall.icon}</div>
+      <div class="mbs-card-name">${mall.name}</div>
+      <div class="mbs-card-addr">${mall.address}</div>
+      <div class="mbs-card-avail ${availClass}">${availText}</div>
+      <div class="mbs-card-price">$${mall.price}/hr</div>
+    `;
+    card.onclick = () => selectMapParking(mall.id);
+    container.appendChild(card);
+  });
+}
+
+function selectMapParking(id) {
+  selectedMallId = id;
+  const mall = TALCA_MALLS.find(m => m.id === id);
+  if (!mall) return;
+
+  // Update card selection visually
+  document.querySelectorAll('.mbs-card').forEach(c => c.classList.remove('selected'));
+  const card = document.getElementById('mbs-' + id);
+  if (card) { card.classList.add('selected'); card.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}); }
+
+  // Draw dashed route polyline (no fitBounds/flyTo)
+  if (currentRoute) { currentRoute.remove(); currentRoute = null; }
+  const userPos = userMarker ? userMarker.getLatLng() : { lat: -35.4264, lng: -71.6553 };
+  const mid1 = { lat: (userPos.lat + mall.lat) / 2 + 0.003, lng: (userPos.lng + mall.lng) / 2 };
+  const mid2 = { lat: (userPos.lat + mall.lat) / 2 - 0.001, lng: (userPos.lng + mall.lng) / 2 + 0.002 };
+  currentRoute = L.polyline([
+    [userPos.lat, userPos.lng], [mid1.lat, mid1.lng], [mid2.lat, mid2.lng], [mall.lat, mall.lng]
+  ], { color: '#4a9eff', weight: 3, dashArray: '8, 6', opacity: 0.85 }).addTo(leafletMap);
+
+  // Route info bar
+  const dist = calcDist(userPos.lat, userPos.lng, mall.lat, mall.lng);
+  document.getElementById('ribName').textContent = mall.name;
+  document.getElementById('ribDist').textContent = `${dist.toFixed(1)} km • ~${Math.ceil(dist/0.4)} min`;
+  document.getElementById('routeInfoBar').classList.add('visible');
+}
+
+function clearRoute() {
+  if (currentRoute) { currentRoute.remove(); currentRoute = null; }
+  selectedMallId = null;
+  document.getElementById('routeInfoBar').classList.remove('visible');
+  document.querySelectorAll('.mbs-card').forEach(c => c.classList.remove('selected'));
+}
+
+function recenterMap() {
+  if (!leafletMap) return;
+  if (userMarker) {
+    leafletMap.setView(userMarker.getLatLng(), 14);
+  } else {
+    leafletMap.setView([-35.4264, -71.6553], 14);
+  }
+}
+
+function calcDist(lat1,lng1,lat2,lng2) {
+  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function setMapFilter(f, el) {
+  mapFilter = f;
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  const filtered = f === 'todos' ? TALCA_MALLS : TALCA_MALLS.filter(m => m.tags.includes(f));
+  renderMapMarkers(filtered);
+  renderMapCards(filtered);
+}
+
+function filterMapParkings(v) {
+  const filtered = TALCA_MALLS.filter(m =>
+    m.name.toLowerCase().includes(v.toLowerCase()) || m.address.toLowerCase().includes(v.toLowerCase())
+  );
+  renderMapMarkers(filtered);
+  renderMapCards(filtered);
+}
+
+// ============================================================
+// RESERVATIONS
+// ============================================================
+function renderReservations() {
+  const container = document.getElementById('reservasContainer');
+  container.innerHTML = '';
+
+  const active = reservationsData.filter(r => r.status === 'active');
+  const upcoming = reservationsData.filter(r => r.status === 'upcoming');
+  const used = reservationsData.filter(r => r.status === 'used');
+
+  if (active.length) {
+    const sec = document.createElement('div');
+    sec.innerHTML = `<div class="res-section-title">${t('badge_active')}</div>`;
+    active.forEach(r => sec.appendChild(buildResCard(r)));
+    container.appendChild(sec);
+  }
+  if (upcoming.length) {
+    const sec = document.createElement('div');
+    sec.innerHTML = `<div class="res-section-title">${t('badge_upcoming')}</div>`;
+    upcoming.forEach(r => sec.appendChild(buildResCard(r)));
+    container.appendChild(sec);
+  }
+  if (used.length) {
+    const sec = document.createElement('div');
+    sec.innerHTML = `<div class="res-section-title">${t('badge_used')}</div>`;
+    used.forEach(r => sec.appendChild(buildResCard(r)));
+    container.appendChild(sec);
+  }
+  if (!reservationsData.length) {
+    container.innerHTML = '<div class="empty-state">Sin reservas</div>';
+  }
+
+  // Start timer for active reservations (open-ended, no hard limit)
+  if (activeTimerInterval) clearInterval(activeTimerInterval);
+  const activeRes = reservationsData.find(r => r.status === 'active');
+  if (activeRes) {
+    const startTime = new Date();
+    startTime.setHours(9,30,0,0);
+    const mall = TALCA_MALLS.find(m => m.id === activeRes.mallId);
+    let closingNotifFired = false;
+    activeTimerInterval = setInterval(() => {
+      const now = new Date();
+      let elapsed = Math.max(0, Math.floor((now - startTime)/1000));
+      const h = String(Math.floor(elapsed/3600)).padStart(2,'0');
+      const m = String(Math.floor((elapsed%3600)/60)).padStart(2,'0');
+      const s = String(elapsed%60).padStart(2,'0');
+      const el = document.getElementById('timer-' + activeRes.id);
+      if (el) el.textContent = `${h}:${m}:${s}`;
+
+      // Closing time notification: fire once when <= 60 min until close
+      if (mall && !closingNotifFired) {
+        const [ch, cm] = mall.closes.split(':').map(Number);
+        const closeMs = new Date(); closeMs.setHours(ch, cm, 0, 0);
+        const minsLeft = (closeMs - now) / 60000;
+        if (minsLeft > 0 && minsLeft <= 60) {
+          closingNotifFired = true;
+          const mins = Math.round(minsLeft);
+          const notif = document.getElementById('closingNotif');
+          document.getElementById('closingNotifText').textContent =
+            `⏰ ${mall.name} cierra en ${mins} min (${mall.closes})`;
+          notif.classList.add('show');
+          setTimeout(() => notif.classList.remove('show'), 8000);
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('Parkium', { body: `${mall.name} cierra en ${mins} minutos`, icon: '🅿️' });
+          }
+        }
+      }
+    }, 1000);
+  }
+}
+
+function buildResCard(r) {
+  const div = document.createElement('div');
+  div.className = 'res-card';
+  let badgeHtml = '';
+  if (r.status==='active') badgeHtml=`<span class="res-badge badge-active">${t('badge_active')}</span>`;
+  else if (r.status==='upcoming') badgeHtml=`<span class="res-badge badge-upcoming">${t('badge_upcoming')}</span>`;
+  else badgeHtml=`<span class="res-badge badge-used">${t('badge_used')}</span>`;
+
+  let timerHtml = '';
+  if (r.status === 'active') {
+    timerHtml = `<div class="res-detail"><span>⏱️</span> <span class="res-timer" id="timer-${r.id}">00:00:00</span></div>`;
+  }
+
+  let actionsHtml = '';
+  if (r.status !== 'used') {
+    actionsHtml = `<div class="res-actions">
+      <button class="res-action-btn res-btn-nav" onclick="navigateTo('mapa')">${t('res_navigate')} 🗺️</button>
+      <button class="res-action-btn res-btn-cancel" onclick="cancelReservation('${r.id}')">${t('res_cancel')}</button>
+    </div>`;
+  }
+
+  const closesTag = r.closes ? `<div class="res-detail"><span>🏬</span> <strong>Cierra ${r.closes}</strong></div>` : '';
+  const durTag = r.duration ? `<div class="res-detail"><span>⏳</span> <strong>${r.duration}h</strong></div>` : '';
+  div.innerHTML = `
+    <div class="res-card-top">
+      <div class="res-icon">${r.icon}</div>
+      <div class="res-card-info">
+        <div class="res-name">${r.name}</div>
+        <div class="res-spot">Espacio ${r.spot}</div>
+      </div>
+      ${badgeHtml}
+    </div>
+    <div class="res-card-details">
+      <div class="res-detail"><span>📅</span> <strong>${r.date}</strong></div>
+      <div class="res-detail"><span>🕐</span> <strong>${r.time}</strong></div>
+      ${durTag}
+      <div class="res-detail"><span>💰</span> <strong>$${r.price}/hr</strong></div>
+      ${closesTag}
+      ${timerHtml}
+    </div>
+    ${actionsHtml}
+  `;
+  return div;
+}
+
+function cancelReservation(id) {
+  reservationsData = reservationsData.filter(r => r.id !== id);
+  renderReservations();
+  showToast(currentLang==='es' ? '✓ Reserva cancelada' : '✓ Reservation cancelled');
+}
+
+// ============================================================
+// NEW RESERVATION MODAL
+// ============================================================
+function openNewReservationModal() {
+  newResStep = 1;
+  newResSelectedMall = null;
+  newResDuration = 1;
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('resDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  const later = new Date(now.getTime() + 30*60000);
+  document.getElementById('resTime').value = `${pad(later.getHours())}:${pad(later.getMinutes())}`;
+  document.querySelectorAll('.dur-pill').forEach((p,i) => p.classList.toggle('active', i===0));
+
+  // Populate parking list
+  const list = document.getElementById('parkingListForRes');
+  list.innerHTML = '';
+  TALCA_MALLS.forEach(mall => {
+    const div = document.createElement('div');
+    div.className = 'parking-list-item';
+    div.id = 'pli-' + mall.id;
+    const availClass = mall.avail > 20 ? 'ok' : mall.avail > 0 ? 'low' : 'full';
+    const availText = mall.avail > 0 ? `${mall.avail} disponibles` : 'Sin disponibilidad';
+    div.innerHTML = `
+      <div class="pli-icon">${mall.icon}</div>
+      <div class="pli-info">
+        <div class="pli-name">${mall.name}</div>
+        <div class="pli-addr">${mall.address}</div>
+        <div class="pli-avail ${availClass}">${availText}</div>
+      </div>
+      <div style="font-size:11px;color:#4a9eff;font-weight:600">$${mall.price}/hr</div>
+    `;
+    div.onclick = () => {
+      if (mall.avail === 0) { showToast('Sin disponibilidad'); return; }
+      newResSelectedMall = mall;
+      document.querySelectorAll('.parking-list-item').forEach(e => e.classList.remove('selected'));
+      div.classList.add('selected');
+    };
+    list.appendChild(div);
+  });
+
+  updateStepIndicator(1);
+  document.getElementById('newResModal').classList.add('open');
+}
+
+function closeNewResModal() {
+  document.getElementById('newResModal').classList.remove('open');
+}
+
+function goStep(n) {
+  if (n === 2 && !newResSelectedMall) { showToast('Selecciona un estacionamiento'); return; }
+  newResStep = n;
+  document.querySelectorAll('.modal-step').forEach((s,i) => s.classList.toggle('active', i+1===n));
+  updateStepIndicator(n);
+  if (n === 3) buildConfirmCard();
+}
+
+function updateStepIndicator(n) {
+  [1,2,3].forEach(i => {
+    const dot = document.getElementById('sdot'+i);
+    dot.classList.remove('active','done');
+    if (i < n) dot.classList.add('done');
+    else if (i === n) dot.classList.add('active');
+  });
+  [1,2].forEach(i => {
+    const line = document.getElementById('sline'+i);
+    line.classList.toggle('done', i < n);
+  });
+}
+
+function selectDuration(n, el) {
+  newResDuration = n;
+  document.querySelectorAll('.dur-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function buildConfirmCard() {
+  if (!newResSelectedMall) return;
+  const dateVal = document.getElementById('resDate').value;
+  const timeVal = document.getElementById('resTime').value;
+  document.getElementById('ccParking').textContent = newResSelectedMall.name;
+  document.getElementById('ccDate').textContent = dateVal;
+  document.getElementById('ccTime').textContent = timeVal;
+  document.getElementById('ccDuration').textContent = `$${newResSelectedMall.price}/hr`;
+  document.getElementById('ccCost').textContent = newResSelectedMall.closes || '–';
+}
+
+function confirmReservation() {
+  if (!newResSelectedMall) return;
+  const dateVal = document.getElementById('resDate').value;
+  const timeVal = document.getElementById('resTime').value;
+  const spots = ['A','B','C','D','E'];
+  const r = String(Math.floor(Math.random()*99)+1).padStart(2,'0');
+  const newRes = {
+    id: 'r' + Date.now(),
+    mallId: newResSelectedMall.id,
+    name: newResSelectedMall.name,
+    spot: `${spots[Math.floor(Math.random()*5)]}-${r}`,
+    icon: newResSelectedMall.icon,
+    status: 'upcoming',
+    date: dateVal,
+    time: timeVal,
+    duration: null,
+    price: newResSelectedMall.price,
+    closes: newResSelectedMall.closes
+  };
+  reservationsData.unshift(newRes);
+  dbSave('reservations', reservationsData);
+  closeNewResModal();
+  renderReservations();
+  navigateTo('reservas');
+  setTimeout(() => showToast('✓ Reserva creada'), 300);
+}
+
+// ============================================================
+// CITY MODAL
+// ============================================================
+function buildRegions() {
+  const container = document.getElementById('regionsContainer');
+  container.innerHTML = '';
+  CHILEAN_REGIONS.forEach(region => {
+    const sec = document.createElement('div');
+    sec.className = 'region-section';
+    const header = document.createElement('div');
+    header.className = 'region-header';
+    header.innerHTML = `<span class="region-name">${region.name}</span><span class="region-arrow">▾</span>`;
+    const citiesDiv = document.createElement('div');
+    citiesDiv.className = 'region-cities';
+    region.cities.forEach(city => {
+      const item = document.createElement('div');
+      item.className = 'city-item' + (city === 'Talca' ? ' active' : '');
+      item.textContent = city;
+      item.onclick = () => selectCity(city, region.name);
+      citiesDiv.appendChild(item);
+    });
+    header.onclick = () => {
+      const isOpen = citiesDiv.classList.contains('open');
+      citiesDiv.classList.toggle('open', !isOpen);
+      header.querySelector('.region-arrow').classList.toggle('open', !isOpen);
+    };
+    if (region.name === 'Maule') {
+      citiesDiv.classList.add('open');
+      header.querySelector('.region-arrow').classList.add('open');
+    }
+    sec.appendChild(header);
+    sec.appendChild(citiesDiv);
+    container.appendChild(sec);
+  });
+}
+
+function openCityModal() {
+  buildRegions();
+  document.getElementById('citySearchInput').value = '';
+  document.getElementById('cityModal').classList.add('open');
+}
+
+function closeCityModal() {
+  document.getElementById('cityModal').classList.remove('open');
+}
+
+function selectCity(city, region) {
+  selectedCity = `${city}, Chile`;
+  document.getElementById('locationText').textContent = selectedCity;
+  closeCityModal();
+  showToast(`📍 ${city}`);
+}
+
+function filterCities(v) {
+  const container = document.getElementById('regionsContainer');
+  if (!v) { buildRegions(); return; }
+  container.innerHTML = '';
+  CHILEAN_REGIONS.forEach(region => {
+    const matches = region.cities.filter(c => c.toLowerCase().includes(v.toLowerCase()));
+    if (!matches.length) return;
+    const sec = document.createElement('div');
+    sec.className = 'region-section';
+    const header = document.createElement('div');
+    header.className = 'region-header';
+    header.innerHTML = `<span class="region-name">${region.name}</span>`;
+    const citiesDiv = document.createElement('div');
+    citiesDiv.className = 'region-cities open';
+    matches.forEach(city => {
+      const item = document.createElement('div');
+      item.className = 'city-item';
+      item.textContent = city;
+      item.onclick = () => selectCity(city, region.name);
+      citiesDiv.appendChild(item);
+    });
+    sec.appendChild(header);
+    sec.appendChild(citiesDiv);
+    container.appendChild(sec);
+  });
+}
+
+// ============================================================
+// PAYMENT MODAL
+// ============================================================
+function openPaymentModal() {
+  document.getElementById('ccvNumber').textContent = cardData.number;
+  document.getElementById('ccvName').textContent = cardData.name;
+  document.getElementById('ccvExpiry').textContent = cardData.expiry;
+  document.getElementById('cardEditForm').classList.remove('visible');
+  document.getElementById('paymentModal').classList.add('open');
+}
+
+function toggleCardEdit() {
+  const form = document.getElementById('cardEditForm');
+  const visible = form.classList.contains('visible');
+  form.classList.toggle('visible', !visible);
+  if (!visible) {
+    document.getElementById('cardNumInput').value = '';
+    document.getElementById('cardNameInput').value = cardData.name;
+    document.getElementById('cardExpiryInput').value = cardData.expiry;
+    document.getElementById('cardCvvInput').value = '';
+  }
+}
+
+function formatCardNumber(input) {
+  let v = input.value.replace(/\D/g,'').substring(0,16);
+  input.value = v.replace(/(.{4})/g,'$1 ').trim();
+}
+
+function saveCard() {
+  const num = document.getElementById('cardNumInput').value.replace(/\s/g,'');
+  const name = document.getElementById('cardNameInput').value.toUpperCase();
+  const expiry = document.getElementById('cardExpiryInput').value;
+  if (num.length >= 4) {
+    cardData.number = `•••• •••• •••• ${num.slice(-4)}`;
+  }
+  if (name) cardData.name = name;
+  if (expiry) cardData.expiry = expiry;
+  document.getElementById('ccvNumber').textContent = cardData.number;
+  document.getElementById('ccvName').textContent = cardData.name;
+  document.getElementById('ccvExpiry').textContent = cardData.expiry;
+  document.getElementById('cardEditForm').classList.remove('visible');
+  dbSave('card', cardData);
+  showToast(currentLang==='es' ? '✓ Tarjeta guardada' : '✓ Card saved');
+}
+
+// ============================================================
+// NOTIFICATIONS MODAL
+// ============================================================
+function renderNotifList() {
+  const keys = ['reservas','disponibilidad','demanda','recordatorios','ofertas'];
+  const list = document.getElementById('notifList');
+  list.innerHTML = '';
+  keys.forEach((key, i) => {
+    const div = document.createElement('div');
+    div.className = 'notif-item';
+    div.innerHTML = `
+      <div class="notif-text">
+        <div class="notif-label">${t('notif_label'+i)}</div>
+        <div class="notif-desc">${t('notif_desc'+i)}</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="ntog-${key}" ${notifState[key] ? 'checked' : ''} onchange="notifState['${key}']=this.checked">
+        <label class="toggle-label" for="ntog-${key}"></label>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function openNotifModal() {
+  renderNotifList();
+  document.getElementById('notifModal').classList.add('open');
+}
+
+function saveNotifs() {
+  closeModal('notifModal');
+  showToast(currentLang==='es' ? '✓ Preferencias guardadas' : '✓ Preferences saved');
+}
+
+// ============================================================
+// EDIT PROFILE MODAL
+// ============================================================
+function openEditProfileModal() {
+  document.getElementById('editName').value = profileData.name;
+  document.getElementById('editEmail').value = profileData.email;
+  document.getElementById('editPhone').value = profileData.phone;
+  document.getElementById('editPlate').value = profileData.plate;
+  document.querySelectorAll('#vehicleTypePills .dur-pill').forEach(p => {
+    p.classList.toggle('active', p.textContent === profileData.vehicle || p.getAttribute('data-i18n') === 'type_auto' && profileData.vehicle === 'Auto');
+  });
+  document.getElementById('editProfileModal').classList.add('open');
+}
+
+function selectVehicleType(type, el) {
+  newResVehicleType = type;
+  profileData.vehicle = type;
+  document.querySelectorAll('#vehicleTypePills .dur-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function setProfilePhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const avatarEl = document.getElementById('profileAvatar');
+    avatarEl.innerHTML = `<img src="${e.target.result}" alt="foto">`;
+    showToast('📷 Foto actualizada');
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveProfile() {
+  profileData.name = document.getElementById('editName').value;
+  profileData.email = document.getElementById('editEmail').value;
+  profileData.phone = document.getElementById('editPhone').value;
+  profileData.plate = document.getElementById('editPlate').value;
+  document.getElementById('profileName').textContent = profileData.name;
+  document.getElementById('profileEmail').textContent = profileData.email;
+  const avatarEl = document.getElementById('profileAvatar');
+  if (!avatarEl.querySelector('img')) {
+    const initials = profileData.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    avatarEl.textContent = initials;
+  }
+  document.getElementById('vehicleSub').textContent = `${profileData.vehicle} • ${profileData.plate}`;
+  dbSave('profile', profileData);
+  closeModal('editProfileModal');
+  showToast(currentLang==='es' ? '✓ Perfil actualizado' : '✓ Profile updated');
+}
+
+function showVehicleInfo() {
+  showToast(`🚗 ${profileData.vehicle} • ${profileData.plate}`);
+}
+
+// ============================================================
+// GENERIC MODAL CLOSE
+// ============================================================
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// ============================================================
+// DB MOCK LAYER (simulates PostgreSQL via localStorage)
+// ============================================================
+const DB_API = 'http://localhost:3001/api';
+let dbOnline = false;
+
+async function dbSave(table, data) {
+  try {
+    localStorage.setItem(`parkium_${table}`, JSON.stringify(data));
+    await fetch(`${DB_API}/${table}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(data), signal: AbortSignal.timeout(1500)
+    });
+    dbOnline = true;
+  } catch {
+    dbOnline = false;
+  }
+  const badge = document.getElementById('dbBadge');
+  if (badge) {
+    badge.style.display = 'flex';
+    badge.innerHTML = dbOnline
+      ? `<span class="db-dot"></span> DB PostgreSQL`
+      : `<span style="width:5px;height:5px;border-radius:50%;background:#ffb020;animation:pulse-dot 2s infinite"></span> Modo offline`;
+    badge.style.borderColor = dbOnline ? '#00c97a44' : '#ffb02044';
+    badge.style.color = dbOnline ? '#00c97a' : '#ffb020';
+  }
+}
+
+function dbLoad(table, fallback) {
+  try {
+    const stored = localStorage.getItem(`parkium_${table}`);
+    return stored ? JSON.parse(stored) : fallback;
+  } catch { return fallback; }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  reservationsData = dbLoad('reservations', reservationsData);
+  profileData = dbLoad('profile', profileData);
+  cardData = dbLoad('card', cardData);
+  notifState = dbLoad('notifs', notifState);
+
+  document.getElementById('profileName').textContent = profileData.name;
+  document.getElementById('profileEmail').textContent = profileData.email;
+  const initials = profileData.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  document.getElementById('profileAvatar').textContent = initials;
+  document.getElementById('vehicleSub').textContent = `${profileData.vehicle} • ${profileData.plate}`;
+
+  renderSpotGrid();
+  renderReservations();
+  renderNotifList();
+
+  if ('Notification' in window && Notification.permission === 'default') {
+    setTimeout(() => Notification.requestPermission(), 2000);
+  }
+
+  dbSave('_ping', {ts: Date.now()});
+
+  const mapNavBtn = document.getElementById('nav-mapa');
+  mapNavBtn.addEventListener('click', () => {
+    setTimeout(() => {
+      if (!leafletMap) initMap();
+      else leafletMap.invalidateSize();
+    }, 300);
+  });
+
+  const observer = new MutationObserver(() => {
+    const mapScreen = document.getElementById('screen-mapa');
+    if (mapScreen.classList.contains('active') &
