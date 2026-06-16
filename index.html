@@ -1,0 +1,1693 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parkium – Escritorio</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a1120;color:#e8f0ff}
+
+/* ═══════════════════════════════════════
+   AUTH SCREEN
+═══════════════════════════════════════ */
+#auth-screen{
+  position:fixed;inset:0;z-index:9000;
+  background:linear-gradient(135deg,#070e1c 0%,#0d1a30 50%,#091526 100%);
+  display:flex;align-items:center;justify-content:center;
+}
+#auth-screen.hidden{display:none}
+.auth-wrap{display:flex;width:820px;height:520px;border-radius:20px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.7);border:1px solid #1e2f4a}
+.auth-left{
+  width:340px;flex-shrink:0;
+  background:linear-gradient(145deg,#00c97a,#2b7de9,#0d2a5a);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;
+  position:relative;overflow:hidden;
+}
+.auth-left::before{content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.06)}
+.auth-left::after{content:'';position:absolute;bottom:-80px;left:-50px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.04)}
+.auth-logo{font-size:52px;font-weight:900;color:#fff;letter-spacing:-2px;position:relative;z-index:1}
+.auth-logo span{color:rgba(255,255,255,.5)}
+.auth-tagline{margin-top:10px;font-size:14px;color:rgba(255,255,255,.7);text-align:center;position:relative;z-index:1}
+.auth-badges{margin-top:28px;display:flex;flex-direction:column;gap:10px;position:relative;z-index:1;width:100%}
+.auth-badge{background:rgba(255,255,255,.12);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.85)}
+.auth-badge-icon{font-size:18px}
+.auth-right{flex:1;background:#0f1a2e;display:flex;flex-direction:column;padding:36px 40px;overflow-y:auto}
+.auth-tabs{display:flex;gap:4px;background:#162035;border-radius:10px;padding:4px;margin-bottom:28px}
+.auth-tab{flex:1;padding:8px;border:none;border-radius:7px;background:none;color:#5570a0;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.auth-tab.active{background:#1e2f4a;color:#e8f0ff}
+.auth-form{display:none;flex-direction:column;gap:14px;flex:1}
+.auth-form.active{display:flex}
+.auth-field label{display:block;font-size:11px;font-weight:700;color:#5570a0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.auth-field input{width:100%;background:#162035;border:1px solid #1e2f4a;border-radius:10px;padding:11px 14px;color:#e8f0ff;font-size:14px;outline:none;transition:border-color .2s}
+.auth-field input:focus{border-color:#4a9eff66}
+.auth-error{font-size:12px;color:#ff4d6d;background:#ff4d6d11;border:1px solid #ff4d6d33;border-radius:8px;padding:9px 12px;display:none}
+.auth-error.show{display:block}
+.auth-btn{padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#00d4aa,#2b7de9);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;letter-spacing:.3px}
+.auth-btn:hover{opacity:.93}
+.auth-divider{text-align:center;font-size:12px;color:#5570a0;margin:4px 0}
+
+/* ═══════════════════════════════════════
+   MAIN APP LAYOUT
+═══════════════════════════════════════ */
+#main-app{display:none;height:100vh;flex-direction:row}
+#main-app.active{display:flex}
+
+/* SIDEBAR */
+.sidebar{width:230px;flex-shrink:0;background:#0c1628;border-right:1px solid #1a2840;display:flex;flex-direction:column;z-index:200}
+.sidebar-logo{padding:22px 20px 18px;display:flex;align-items:center;gap:11px;border-bottom:1px solid #1a2840;flex-shrink:0}
+.sidebar-logo-icon{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#00d4aa,#2b7de9);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#fff;flex-shrink:0}
+.sidebar-logo-text{font-size:17px;font-weight:800;color:#e8f0ff;letter-spacing:-.3px}
+.sidebar-logo-sub{font-size:10px;color:#4a6080;margin-top:1px}
+.sidebar-nav{flex:1;padding:12px 10px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.nav-section{font-size:9px;font-weight:700;color:#344f72;text-transform:uppercase;letter-spacing:1px;padding:10px 10px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:none;background:none;color:#7a8fb0;font-size:13px;font-weight:600;cursor:pointer;width:100%;text-align:left;transition:all .2s}
+.nav-item:hover{background:#162035;color:#c8d8f0}
+.nav-item.active{background:#1e3060;color:#e8f0ff}
+.nav-item.active .nav-icon{color:#4a9eff}
+.nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.sidebar-footer{padding:12px 10px;border-top:1px solid #1a2840;flex-shrink:0;display:flex;flex-direction:column;gap:8px}
+.sidebar-user{display:flex;align-items:center;gap:10px;padding:8px 10px;background:#162035;border-radius:10px}
+.sidebar-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#00d4aa,#2b7de9);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden}
+.sidebar-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.sidebar-user-info{flex:1;min-width:0}
+.sidebar-user-name{font-size:12px;font-weight:700;color:#e8f0ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-user-email{font-size:10px;color:#4a6080;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-lang{width:100%;background:#162035;border:1px solid #1e2f4a;border-radius:9px;padding:8px 12px;color:#e8f0ff;font-size:12px;font-weight:600;cursor:pointer;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235570a0' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+.sidebar-lang option{background:#0f1a2e}
+.sidebar-logout{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;border:none;background:#ff4d6d11;color:#ff4d6d;font-size:12px;font-weight:600;cursor:pointer;width:100%;transition:background .2s}
+.sidebar-logout:hover{background:#ff4d6d22}
+
+/* CONTENT AREA */
+.content-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* TOP BAR */
+.top-bar{height:58px;flex-shrink:0;background:#0c1628;border-bottom:1px solid #1a2840;display:flex;align-items:center;padding:0 24px;gap:16px;z-index:100}
+.top-bar-title{font-size:16px;font-weight:700;color:#e8f0ff;flex:1}
+.location-pill{display:flex;align-items:center;gap:7px;background:#162035;border:1px solid #1e2f4a;border-radius:20px;padding:7px 14px;cursor:pointer;transition:border-color .2s}
+.location-pill:hover{border-color:#4a9eff44}
+.location-pill svg{color:#4a9eff;flex-shrink:0}
+.location-text{font-size:12px;color:#c8d8f0;font-weight:600}
+.top-bar-actions{display:flex;align-items:center;gap:8px}
+.top-bar-btn{width:36px;height:36px;border-radius:9px;border:1px solid #1e2f4a;background:#162035;color:#c8d8f0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px}
+.top-bar-btn:hover{border-color:#4a9eff44}
+.top-bar-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#00d4aa,#2b7de9);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;cursor:pointer;overflow:hidden;border:2px solid #1e2f4a;flex-shrink:0}
+.top-bar-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+
+/* SCREENS WRAPPER */
+.screens-wrapper{flex:1;position:relative;overflow:hidden}
+.screen{position:absolute;inset:0;display:none;flex-direction:column;overflow-y:auto;background:#0d1526}
+.screen.active{display:flex}
+
+/* ═══════════════════════════════════════
+   INICIO SCREEN (desktop 2-col)
+═══════════════════════════════════════ */
+.inicio-desktop{display:grid;grid-template-columns:300px 1fr;gap:20px;padding:20px;height:100%;overflow:hidden}
+.inicio-left{display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.inicio-right{display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-card{background:#162035;border:1px solid #1e2f4a;border-radius:12px;padding:14px;text-align:center}
+.stat-num{font-size:22px;font-weight:700;color:#e8f0ff}
+.stat-lbl{font-size:10px;color:#5570a0;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
+.stat-card.donut-card{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px}
+.donut-wrap{position:relative;width:48px;height:48px;flex-shrink:0}
+.donut-wrap svg{transform:rotate(-90deg)}
+.donut-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#e8f0ff}
+.donut-info{text-align:left}
+.alert-banner{background:#ffb02015;border:1px solid #ffb02044;border-radius:10px;padding:11px 14px;display:flex;align-items:center;gap:8px}
+.alert-text{font-size:13px;color:#ffb020;font-weight:600}
+.parking-card{background:#162035;border:1px solid #1e2f4a;border-radius:14px;overflow:hidden;flex:1;display:flex;flex-direction:column;min-height:0}
+.pm-header{padding:12px 16px;border-bottom:1px solid #1e2f4a;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pm-title{font-size:14px;font-weight:700;color:#e8f0ff}
+.level-tabs{display:flex;gap:4px}
+.level-tab{padding:5px 11px;border-radius:7px;border:none;background:none;color:#5570a0;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.level-tab.active{background:#4a9eff22;color:#4a9eff}
+.pm-search{padding:10px 14px;border-bottom:1px solid #1e2f4a;flex-shrink:0}
+.pm-search input{width:100%;background:#0d1526;border:1px solid #1e2f4a;border-radius:8px;padding:8px 12px;color:#e8f0ff;font-size:13px;outline:none}
+.pm-search input::placeholder{color:#5570a0}
+.spot-grid{display:block;padding:0;line-height:0;width:100%;overflow-y:auto;flex:1}
+.spots-legend{padding:8px 14px 12px;display:flex;gap:12px;flex-shrink:0;border-top:1px solid #1e2f4a}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#5570a0}
+.legend-dot{width:10px;height:10px;border-radius:2px}
+.action-btns-row{display:flex;gap:10px}
+.action-btn{flex:1;padding:13px;border-radius:12px;border:none;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn-primary{background:linear-gradient(135deg,#00d4aa,#2b7de9);color:#fff}
+.btn-primary:hover{opacity:.93}
+.btn-secondary{background:#162035;border:1px solid #1e2f4a;color:#c8d8f0}
+.btn-secondary:hover{border-color:#4a9eff44}
+.section-title-row{display:flex;align-items:center;justify-content:space-between}
+.section-title{font-size:14px;font-weight:700;color:#e8f0ff}
+.malls-list{display:flex;flex-direction:column;gap:8px}
+.mall-row{background:#162035;border:1px solid #1e2f4a;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .2s}
+.mall-row:hover{border-color:#4a9eff44}
+.mall-row-icon{font-size:22px;flex-shrink:0}
+.mall-row-info{flex:1;min-width:0}
+.mall-row-name{font-size:13px;font-weight:700;color:#e8f0ff}
+.mall-row-addr{font-size:11px;color:#5570a0;margin-top:1px}
+.mall-row-avail{font-size:12px;font-weight:600;margin-top:4px}
+.mall-avail-ok{color:#00c97a}
+.mall-avail-low{color:#ffb020}
+.mall-avail-full{color:#ff4d6d}
+.mall-price{font-size:12px;color:#4a9eff;font-weight:700}
+
+/* ═══════════════════════════════════════
+   MAPA SCREEN (desktop)
+═══════════════════════════════════════ */
+.screen-mapa{flex-direction:row!important;overflow:hidden!important}
+.mapa-main{flex:1;position:relative;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#leaflet-map{flex:1;width:100%;min-height:0}
+.mapa-top-bar{flex-shrink:0;padding:12px 14px 10px;background:#0c1628;border-bottom:1px solid #1a2840;z-index:10;position:relative}
+.map-overlay{position:absolute;bottom:14px;left:14px;right:14px;z-index:10;pointer-events:none}
+.map-overlay>*{pointer-events:all}
+.map-search-bar{display:flex;align-items:center;gap:8px;background:#111f38;border:1px solid #1e2f4a;border-radius:10px;padding:9px 14px;margin-bottom:10px}
+.map-search-bar input{flex:1;background:none;border:none;outline:none;color:#e8f0ff;font-size:13px}
+.map-search-bar input::placeholder{color:#5570a0}
+.map-filters{display:flex;gap:7px;margin-top:8px}
+.filter-pill{padding:6px 14px;border-radius:20px;border:1px solid #1e2f4a;background:#0f1a2ecc;color:#c8d8f0;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;backdrop-filter:blur(4px);transition:all .2s}
+.filter-pill.active{background:#4a9eff;border-color:#4a9eff;color:#fff}
+.route-info-bar{margin-top:8px;background:#162035ee;border:1px solid #4a9eff44;border-radius:10px;padding:9px 14px;display:none;align-items:center;gap:9px;backdrop-filter:blur(4px);max-width:420px}
+.route-info-bar.visible{display:flex}
+.rib-icon{font-size:16px}
+.rib-text{flex:1}
+.rib-name{font-size:13px;font-weight:700;color:#e8f0ff}
+.rib-dist{font-size:11px;color:#5570a0}
+.rib-close{width:28px;height:28px;background:#ff4d6d22;border-radius:7px;border:none;color:#ff4d6d;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+.map-recenter-btn{position:absolute;bottom:14px;right:14px;z-index:10;width:40px;height:40px;background:#162035;border:1px solid #1e2f4a;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+.mapa-sidebar{width:280px;flex-shrink:0;background:#0c1628;border-left:1px solid #1a2840;display:flex;flex-direction:column;overflow:hidden}
+.mbs-section-title{font-size:11px;font-weight:700;color:#5570a0;padding:14px 16px 8px;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}
+.mbs-list{flex:1;overflow-y:auto;padding:0 12px 12px;display:flex;flex-direction:column;gap:8px}
+.mbs-card{background:#162035;border:1px solid #1e2f4a;border-radius:12px;padding:12px;cursor:pointer;transition:border-color .2s}
+.mbs-card.selected{border-color:#4a9eff}
+.mbs-card:hover{border-color:#4a9eff44}
+.mbs-card-top{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.mbs-card-icon{font-size:22px;flex-shrink:0}
+.mbs-card-name{font-size:13px;font-weight:700;color:#e8f0ff}
+.mbs-card-addr{font-size:11px;color:#5570a0;margin-top:1px}
+.mbs-card-avail{font-size:12px;font-weight:600}
+.mbs-card-avail.ok{color:#00c97a}
+.mbs-card-avail.low{color:#ffb020}
+.mbs-card-avail.full{color:#ff4d6d}
+.mbs-card-price{font-size:12px;color:#4a9eff;font-weight:600;margin-top:4px}
+.mbs-card-nav{margin-top:8px;width:100%;padding:7px;border-radius:8px;border:none;background:#4a9eff22;color:#4a9eff;font-size:12px;font-weight:600;cursor:pointer}
+
+/* ═══════════════════════════════════════
+   RESERVAS SCREEN (desktop)
+═══════════════════════════════════════ */
+.screen-reservas-wrap{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:20px;height:100%}
+@media(max-width:900px){.screen-reservas-wrap{grid-template-columns:1fr}}
+.reservas-col{display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+.reservas-header{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;padding-bottom:4px}
+.screen-title{font-size:18px;font-weight:700;color:#e8f0ff}
+.new-res-btn{background:linear-gradient(135deg,#00d4aa,#2b7de9);border:none;border-radius:10px;padding:9px 16px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px}
+.res-section-title{font-size:11px;font-weight:700;color:#5570a0;text-transform:uppercase;letter-spacing:.5px;padding:4px 0}
+.res-card{background:#162035;border:1px solid #1e2f4a;border-radius:14px;padding:16px}
+.res-card-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.res-icon{width:42px;height:42px;background:#0d1526;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.res-card-info{flex:1;min-width:0}
+.res-name{font-size:14px;font-weight:700;color:#e8f0ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.res-spot{font-size:11px;color:#5570a0;margin-top:1px}
+.res-badge{padding:4px 9px;border-radius:20px;font-size:10px;font-weight:700;flex-shrink:0}
+.badge-active{background:#00c97a22;color:#00c97a;border:1px solid #00c97a44}
+.badge-upcoming{background:#4a9eff22;color:#4a9eff;border:1px solid #4a9eff44}
+.badge-used{background:#5570a022;color:#5570a0;border:1px solid #5570a044}
+.res-card-details{display:flex;gap:12px;flex-wrap:wrap}
+.res-detail{display:flex;align-items:center;gap:4px;font-size:12px;color:#5570a0}
+.res-detail strong{color:#c8d8f0}
+.res-timer{font-size:17px;font-weight:700;color:#00c97a;font-variant-numeric:tabular-nums;font-family:monospace}
+.res-actions{margin-top:10px;display:flex;gap:8px}
+.res-action-btn{flex:1;padding:9px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:600}
+.res-btn-nav{background:#4a9eff22;color:#4a9eff}
+.res-btn-cancel{background:#ff4d6d22;color:#ff4d6d}
+.empty-state{padding:40px 20px;text-align:center;color:#5570a0;font-size:14px}
+
+/* ═══════════════════════════════════════
+   PERFIL SCREEN (desktop)
+═══════════════════════════════════════ */
+.perfil-desktop{display:grid;grid-template-columns:320px 1fr;gap:20px;padding:20px;height:100%;overflow-y:auto}
+.perfil-card{background:#162035;border:1px solid #1e2f4a;border-radius:16px;padding:28px;display:flex;flex-direction:column;align-items:center;gap:14px;height:fit-content}
+.avatar-wrap{position:relative;width:90px;height:90px;cursor:pointer}
+.avatar{width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#00d4aa,#2b7de9);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#fff;overflow:hidden;border:3px solid #1e2f4a}
+.avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.avatar-pencil{position:absolute;bottom:2px;right:2px;width:28px;height:28px;border-radius:50%;background:#4a9eff;border:2px solid #0d1526;display:flex;align-items:center;justify-content:center;font-size:12px;pointer-events:none}
+.avatar-name{font-size:18px;font-weight:700;color:#e8f0ff;text-align:center}
+.avatar-email{font-size:12px;color:#5570a0;text-align:center}
+.edit-profile-btn{padding:8px 20px;background:#162035;border:1px solid #1e2f4a;border-radius:20px;color:#4a9eff;font-size:13px;font-weight:600;cursor:pointer}
+.perfil-stats{display:flex;gap:10px;width:100%}
+.perfil-stat{flex:1;background:#0d1526;border-radius:12px;padding:14px;text-align:center}
+.ps-num{font-size:22px;font-weight:700;color:#e8f0ff}
+.ps-lbl{font-size:10px;color:#5570a0;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+.perfil-logout-btn{width:100%;padding:12px;border-radius:12px;background:#ff4d6d11;border:1px solid #ff4d6d33;color:#ff4d6d;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.perfil-settings{display:flex;flex-direction:column;gap:12px}
+.settings-section{background:#162035;border:1px solid #1e2f4a;border-radius:14px;overflow:hidden}
+.settings-section-header{padding:14px 18px;border-bottom:1px solid #1e2f4a;font-size:13px;font-weight:700;color:#e8f0ff}
+.pm-item{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;transition:background .15s}
+.pm-item:hover{background:#1a2840}
+.pm-item-icon{width:34px;height:34px;border-radius:9px;background:#0d1526;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.pm-item-text{flex:1}
+.pm-item-label{font-size:13px;font-weight:600;color:#e8f0ff}
+.pm-item-sub{font-size:11px;color:#5570a0;margin-top:1px}
+.pm-item-arrow{color:#5570a0;font-size:15px}
+#photoInput{display:none}
+
+/* ═══════════════════════════════════════
+   MODALS (desktop centered dialogs)
+═══════════════════════════════════════ */
+.full-modal{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:20px}
+.full-modal.open{display:flex}
+.modal-panel{background:#0f1a2e;border:1px solid #1e2f4a;border-radius:18px;width:480px;max-width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.modal-panel.wide{width:600px}
+.modal-header{display:flex;align-items:center;padding:18px 22px;border-bottom:1px solid #1e2f4a;flex-shrink:0;gap:12px}
+.modal-back{width:34px;height:34px;background:#162035;border:1px solid #1e2f4a;border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#c8d8f0;flex-shrink:0}
+.modal-title{font-size:16px;font-weight:700;color:#e8f0ff;flex:1}
+.modal-body{flex:1;overflow-y:auto;padding:20px 22px}
+
+/* City Modal */
+.city-search{width:100%;background:#162035;border:1px solid #1e2f4a;border-radius:12px;padding:10px 14px;color:#e8f0ff;font-size:14px;outline:none;margin-bottom:14px}
+.city-search::placeholder{color:#5570a0}
+.region-section{margin-bottom:8px;border:1px solid #1e2f4a;border-radius:12px;overflow:hidden}
+.region-header{padding:12px 14px;background:#162035;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.region-name{font-size:13px;font-weight:700;color:#e8f0ff}
+.region-arrow{color:#5570a0;font-size:12px;transition:transform .2s}
+.region-arrow.open{transform:rotate(180deg)}
+.region-cities{display:none;background:#0d1526;padding:6px 0}
+.region-cities.open{display:block}
+.city-item{padding:10px 20px;font-size:13px;color:#c8d8f0;cursor:pointer;transition:background .15s}
+.city-item:hover{background:#162035}
+.city-item.active{color:#4a9eff;font-weight:600}
+
+/* Spot detail (desktop: centered modal) */
+.spot-backdrop{position:fixed;inset:0;z-index:800;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center}
+.spot-backdrop.open{display:flex}
+.spot-dialog{background:#162035;border:1px solid #1e2f4a;border-radius:16px;width:360px;padding:24px;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.bsm-title{font-size:16px;font-weight:700;color:#e8f0ff;margin-bottom:14px}
+.bsm-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #1e2f4a}
+.bsm-row:last-child{border-bottom:none}
+.bsm-label{font-size:12px;color:#5570a0}
+.bsm-value{font-size:12px;font-weight:600;color:#e8f0ff}
+.bsm-book-btn{margin-top:16px;width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#00d4aa,#2b7de9);color:#fff;font-size:14px;font-weight:700;cursor:pointer}
+.bsm-close-btn{position:absolute;top:12px;right:12px;background:none;border:none;color:#5570a0;font-size:18px;cursor:pointer}
+
+/* Closing notification */
+.closing-notif{position:fixed;top:16px;right:16px;z-index:2000;background:#ffb020;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:8px;transform:translateY(-80px);transition:transform .3s;pointer-events:none;max-width:340px;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.closing-notif.show{transform:translateY(0)}
+.closing-notif-text{font-size:13px;font-weight:700;color:#0d1526;flex:1}
+.closing-notif-close{background:none;border:none;font-size:14px;cursor:pointer;color:#0d1526;pointer-events:all}
+
+/* Toast */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:#00c97a;color:#fff;padding:11px 24px;border-radius:20px;font-size:14px;font-weight:700;z-index:5000;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;box-shadow:0 8px 24px rgba(0,201,122,.3)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Form components */
+.form-group{margin-bottom:14px}
+.form-label{font-size:11px;font-weight:700;color:#5570a0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block}
+.form-input{width:100%;background:#162035;border:1px solid #1e2f4a;border-radius:10px;padding:10px 14px;color:#e8f0ff;font-size:14px;outline:none;transition:border-color .2s}
+.form-input:focus{border-color:#4a9eff55}
+.duration-pills{display:flex;gap:8px}
+.dur-pill{flex:1;padding:9px;border-radius:10px;border:1px solid #1e2f4a;background:#162035;color:#c8d8f0;font-size:13px;font-weight:600;cursor:pointer;text-align:center;transition:all .2s}
+.dur-pill.active{background:#4a9eff22;border-color:#4a9eff;color:#4a9eff}
+.confirm-card{background:#162035;border:1px solid #1e2f4a;border-radius:14px;padding:16px;margin-bottom:16px}
+.cc-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #0d1526}
+.cc-row:last-child{border-bottom:none}
+.cc-label{font-size:12px;color:#5570a0}
+.cc-value{font-size:12px;font-weight:600;color:#e8f0ff}
+.modal-nav-btns{display:flex;gap:10px;margin-top:14px}
+.mnb-prev{flex:1;padding:11px;border-radius:10px;background:#162035;border:1px solid #1e2f4a;color:#c8d8f0;font-size:13px;font-weight:600;cursor:pointer}
+.mnb-next{flex:1;padding:11px;border-radius:10px;background:linear-gradient(135deg,#00d4aa,#2b7de9);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.mnb-confirm{width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#00c97a,#00a060);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px}
+.step-indicator{display:flex;align-items:center;gap:6px;margin-bottom:18px}
+.step-dot{width:28px;height:28px;border-radius:50%;border:2px solid #1e2f4a;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#5570a0}
+.step-dot.active{border-color:#4a9eff;background:#4a9eff22;color:#4a9eff}
+.step-dot.done{border-color:#00c97a;background:#00c97a22;color:#00c97a}
+.step-line{flex:1;height:1px;background:#1e2f4a}
+.step-line.done{background:#00c97a44}
+.parking-list-item{padding:12px;background:#162035;border:1px solid #1e2f4a;border-radius:12px;margin-bottom:8px;cursor:pointer;transition:border-color .2s;display:flex;align-items:center;gap:10px}
+.parking-list-item.selected{border-color:#4a9eff}
+.pli-icon{font-size:22px;flex-shrink:0}
+.pli-info{flex:1}
+.pli-name{font-size:13px;font-weight:700;color:#e8f0ff}
+.pli-addr{font-size:11px;color:#5570a0}
+.pli-avail{font-size:11px;font-weight:600}
+
+/* Payment modal */
+.credit-card-visual{width:100%;aspect-ratio:1.586;background:linear-gradient(135deg,#0d2a4a,#1e4a7a,#0d3a5a);border-radius:16px;padding:22px;position:relative;overflow:hidden;margin-bottom:16px}
+.ccv-shine{position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(180deg,rgba(255,255,255,.08),transparent)}
+.ccv-bank{font-size:13px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:2px;text-transform:uppercase}
+.ccv-chip{width:34px;height:26px;background:linear-gradient(135deg,#c8a020,#f0c040);border-radius:4px;margin:18px 0 0;position:relative}
+.ccv-chip::after{content:'';position:absolute;inset:4px;border:1px solid rgba(0,0,0,.3);border-radius:2px}
+.ccv-number{font-size:18px;font-weight:600;color:#fff;letter-spacing:2px;margin:18px 0 9px;font-family:monospace}
+.ccv-bottom{display:flex;justify-content:space-between;align-items:flex-end}
+.ccv-name{font-size:12px;color:rgba(255,255,255,.8);font-weight:600;text-transform:uppercase;letter-spacing:1px}
+.ccv-expiry{text-align:right}
+.ccv-expiry-label{font-size:9px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px}
+.ccv-expiry-val{font-size:13px;color:#fff;font-weight:600}
+.card-edit-form{display:none}
+.card-edit-form.visible{display:block}
+.card-btns{display:flex;gap:10px;margin-bottom:12px}
+.card-edit-btn{flex:1;padding:10px;border-radius:10px;background:#162035;border:1px solid #4a9eff44;color:#4a9eff;font-size:13px;font-weight:600;cursor:pointer}
+.card-add-btn{flex:1;padding:10px;border-radius:10px;background:none;border:1px solid #1e2f4a;color:#c8d8f0;font-size:13px;font-weight:600;cursor:pointer}
+.card-save-btn{width:100%;padding:11px;border-radius:10px;background:linear-gradient(135deg,#00d4aa,#2b7de9);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px}
+
+/* Notification toggles */
+.notif-item{display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid #1e2f4a}
+.notif-item:last-child{border-bottom:none}
+.notif-text{flex:1}
+.notif-label{font-size:13px;font-weight:600;color:#e8f0ff}
+.notif-desc{font-size:11px;color:#5570a0;margin-top:2px}
+.toggle-wrap{flex-shrink:0}
+.toggle-input{display:none}
+.toggle-label{display:block;width:44px;height:24px;background:#1e2f4a;border-radius:12px;cursor:pointer;position:relative;transition:background .2s}
+.toggle-label::after{content:'';position:absolute;width:18px;height:18px;background:#5570a0;border-radius:50%;top:3px;left:3px;transition:all .2s}
+.toggle-input:checked + .toggle-label{background:#4a9eff44}
+.toggle-input:checked + .toggle-label::after{left:23px;background:#4a9eff}
+.notif-save-btn{width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#00d4aa,#2b7de9);color:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-top:16px}
+
+/* Leaflet overrides */
+.leaflet-container{background:#0d1526!important}
+.leaflet-control-zoom{display:none}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#1e2f4a;border-radius:2px}
+.custom-marker{width:34px;height:34px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff}
+.marker-avail{background:#00c97a}
+.marker-low{background:#ffb020}
+.marker-full{background:#ff4d6d}
+.spot-grid{display:block;padding:0;line-height:0;width:100%}
+.lot-spot{transition:opacity .15s}
+.lot-spot:hover{opacity:.85}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     AUTH SCREEN
+════════════════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-wrap">
+    <div class="auth-left">
+      <div class="auth-logo">P<span>.</span></div>
+      <div class="auth-tagline">Estacionamiento inteligente<br>para Talca y Chile</div>
+      <div class="auth-badges">
+        <div class="auth-badge"><span class="auth-badge-icon">🗺️</span>Mapa en tiempo real</div>
+        <div class="auth-badge"><span class="auth-badge-icon">📋</span>Reservas instantáneas</div>
+        <div class="auth-badge"><span class="auth-badge-icon">🔔</span>Notificaciones de cierre</div>
+      </div>
+    </div>
+    <div class="auth-right">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Iniciar sesión</button>
+        <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Registrarse</button>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <form class="auth-form active" id="form-login" onsubmit="doLogin(event)">
+        <div class="auth-field">
+          <label>Correo electrónico</label>
+          <input type="email" id="login-email" placeholder="tu@email.com" required autocomplete="email">
+        </div>
+        <div class="auth-field">
+          <label>Contraseña</label>
+          <input type="password" id="login-pass" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <div class="auth-error" id="login-error">Correo o contraseña incorrectos</div>
+        <button type="submit" class="auth-btn">Iniciar sesión</button>
+        <div class="auth-divider">¿No tienes cuenta? <a href="#" onclick="switchAuthTab('register');return false" style="color:#4a9eff">Regístrate</a></div>
+      </form>
+
+      <!-- REGISTER FORM -->
+      <form class="auth-form" id="form-register" onsubmit="doRegister(event)">
+        <div class="auth-field">
+          <label>Nombre completo</label>
+          <input type="text" id="reg-name" placeholder="Juan Pérez" required>
+        </div>
+        <div class="auth-field">
+          <label>Correo electrónico</label>
+          <input type="email" id="reg-email" placeholder="tu@email.com" required autocomplete="email">
+        </div>
+        <div class="auth-field">
+          <label>Contraseña</label>
+          <input type="password" id="reg-pass" placeholder="Mínimo 6 caracteres" required minlength="6">
+        </div>
+        <div class="auth-field">
+          <label>Confirmar contraseña</label>
+          <input type="password" id="reg-pass2" placeholder="Repite tu contraseña" required>
+        </div>
+        <div class="auth-error" id="reg-error">Las contraseñas no coinciden</div>
+        <button type="submit" class="auth-btn">Crear cuenta</button>
+        <div class="auth-divider">¿Ya tienes cuenta? <a href="#" onclick="switchAuthTab('login');return false" style="color:#4a9eff">Inicia sesión</a></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MAIN APP
+════════════════════════════════════════════════ -->
+<div id="main-app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">P</div>
+      <div>
+        <div class="sidebar-logo-text">Parkium</div>
+        <div class="sidebar-logo-sub" data-i18n="drawer_sub">Estacionamiento inteligente</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section" data-i18n="nav_label">Navegación</div>
+      <button class="nav-item active" id="nav-inicio" onclick="navigateTo('inicio')">
+        <span class="nav-icon">🏠</span><span data-i18n="nav_inicio">Inicio</span>
+      </button>
+      <button class="nav-item" id="nav-mapa" onclick="navigateTo('mapa')">
+        <span class="nav-icon">🗺️</span><span data-i18n="nav_mapa">Mapa</span>
+      </button>
+      <button class="nav-item" id="nav-reservas" onclick="navigateTo('reservas')">
+        <span class="nav-icon">📋</span><span data-i18n="nav_reservas">Reservas</span>
+      </button>
+      <button class="nav-item" id="nav-perfil" onclick="navigateTo('perfil')">
+        <span class="nav-icon">👤</span><span data-i18n="nav_perfil">Perfil</span>
+      </button>
+      <div class="nav-section" data-i18n="settings_label">Configuración</div>
+      <button class="nav-item" onclick="openNotifModal()">
+        <span class="nav-icon">🔔</span><span data-i18n="notif_title">Notificaciones</span>
+      </button>
+      <button class="nav-item" onclick="openPaymentModal()">
+        <span class="nav-icon">💳</span><span data-i18n="payment_title">Métodos de pago</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebarAvatar">DT</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="sidebarName">Diego Torres</div>
+          <div class="sidebar-user-email" id="sidebarEmail">diego.torres@gmail.com</div>
+        </div>
+      </div>
+      <select class="sidebar-lang" id="langSelect" onchange="setLang(this.value)">
+        <option value="es">🇨🇱 Español</option>
+        <option value="en">🇺🇸 English</option>
+        <option value="map">🌿 Mapudungun</option>
+        <option value="ht">🇭🇹 Kreyòl ayisyen</option>
+        <option value="zh">🇨🇳 中文</option>
+        <option value="pt">🇧🇷 Português</option>
+      </select>
+      <button class="sidebar-logout" onclick="logoutUser()">
+        <span>🚪</span><span data-i18n="logout">Cerrar sesión</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- CONTENT AREA -->
+  <div class="content-area">
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+      <span class="top-bar-title" id="topBarTitle">Inicio</span>
+      <div class="location-pill" onclick="openCityModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
+        <span class="location-text" id="locationText">Talca, Chile</span>
+        <span style="color:#5570a0;font-size:10px">▾</span>
+      </div>
+      <div class="top-bar-actions">
+        <div class="top-bar-btn" onclick="openNotifModal()" title="Notificaciones">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#c8d8f0" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+        <div class="top-bar-avatar" id="topBarAvatar" onclick="navigateTo('perfil')">DT</div>
+      </div>
+    </div>
+
+    <!-- SCREENS -->
+    <div class="screens-wrapper">
+
+      <!-- ══ INICIO SCREEN ══ -->
+      <div class="screen active" id="screen-inicio">
+        <div class="inicio-desktop">
+          <!-- LEFT COL -->
+          <div class="inicio-left">
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-num">50</div>
+                <div class="stat-lbl" data-i18n="stat_total">Total</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-num" id="statsAvail" style="color:#00c97a">22</div>
+                <div class="stat-lbl" data-i18n="stat_avail">Disponibles</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-num" id="statsOcc" style="color:#ff4d6d">28</div>
+                <div class="stat-lbl" data-i18n="stat_occ">Ocupados</div>
+              </div>
+              <div class="stat-card donut-card">
+                <div class="donut-wrap">
+                  <svg width="48" height="48" viewBox="0 0 48 48">
+                    <circle cx="24" cy="24" r="19" fill="none" stroke="#1e2f4a" stroke-width="5"/>
+                    <circle cx="24" cy="24" r="19" fill="none" stroke="#ff4d6d" stroke-width="5"
+                      stroke-dasharray="119.4" stroke-dashoffset="28.6" stroke-linecap="round"/>
+                  </svg>
+                  <div class="donut-center">76%</div>
+                </div>
+                <div class="donut-info">
+                  <div style="font-size:12px;font-weight:700;color:#c8d8f0" data-i18n="stat_occ2">Ocup.</div>
+                  <div style="font-size:10px;color:#5570a0">zona</div>
+                </div>
+              </div>
+            </div>
+            <div class="alert-banner">
+              <span style="font-size:18px">⚠️</span>
+              <span class="alert-text" data-i18n="alert_demand">Alta demanda en zona central</span>
+            </div>
+            <div class="action-btns-row">
+              <button class="action-btn btn-primary" onclick="navigateTo('mapa')" data-i18n="btn_navigate">🗺️ Ver mapa</button>
+              <button class="action-btn btn-secondary" onclick="openNewReservationModal()" data-i18n="btn_reserve">📋 Reservar</button>
+            </div>
+            <div>
+              <div class="section-title-row" style="margin-bottom:10px">
+                <span class="section-title" data-i18n="nearby_lots">Estacionamientos cercanos</span>
+              </div>
+              <div class="malls-list" id="mallsListInicio"></div>
+            </div>
+          </div>
+          <!-- RIGHT COL -->
+          <div class="inicio-right">
+            <div class="parking-card">
+              <div class="pm-header">
+                <span class="pm-title" data-i18n="spots_title">Mapa de espacios</span>
+                <div class="level-tabs">
+                  <button class="level-tab active" onclick="selectLevel(1,this)">N1</button>
+                  <button class="level-tab" onclick="selectLevel(2,this)">N2</button>
+                  <button class="level-tab" onclick="selectLevel(3,this)">N3</button>
+                </div>
+              </div>
+              <div class="pm-search">
+                <input type="text" id="spotSearch" placeholder="Buscar espacio (ej: A-03)..." oninput="filterSpots(this.value)">
+              </div>
+              <div class="spot-grid" id="spotGrid"></div>
+              <div class="spots-legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#00c97a44;border:1px solid #00c97a66"></div><span data-i18n="legend_avail">Libre</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#ff4d6d44;border:1px solid #ff4d6d66"></div><span data-i18n="legend_occ">Ocupado</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#4a9eff44;border:1px solid #4a9eff66"></div><span data-i18n="legend_res">Reservado</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ MAPA SCREEN ══ -->
+      <div class="screen screen-mapa" id="screen-mapa">
+        <div class="mapa-main">
+          <div class="mapa-top-bar">
+            <div class="map-search-bar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5570a0" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" id="mapSearchInput" placeholder="Buscar estacionamiento..." oninput="filterMapParkings(this.value)">
+            </div>
+            <div class="map-filters">
+              <div class="filter-pill active" onclick="setMapFilter('todos',this)" data-i18n="filter_all">Todos</div>
+              <div class="filter-pill" onclick="setMapFilter('disponible',this)" data-i18n="filter_avail">Disponible</div>
+              <div class="filter-pill" onclick="setMapFilter('economico',this)" data-i18n="filter_cheap">Económico</div>
+              <div class="filter-pill" onclick="setMapFilter('cercano',this)" data-i18n="filter_near">Cercano</div>
+              <div class="filter-pill" onclick="setMapFilter('techado',this)" data-i18n="filter_covered">Techado</div>
+            </div>
+          </div>
+          <div id="leaflet-map"></div>
+          <div class="map-overlay">
+            <div class="route-info-bar" id="routeInfoBar">
+              <span class="rib-icon">🔵</span>
+              <div class="rib-text">
+                <div class="rib-name" id="ribName">–</div>
+                <div class="rib-dist" id="ribDist">–</div>
+              </div>
+              <button class="rib-close" onclick="clearRoute()">✕</button>
+            </div>
+          </div>
+          <div class="map-recenter-btn" onclick="recenterMap()" title="Mi ubicación">📍</div>
+        </div>
+        <div class="mapa-sidebar">
+          <div class="mbs-section-title" data-i18n="nearby_lots">Estacionamientos cercanos</div>
+          <div class="mbs-list" id="mbsCards"></div>
+        </div>
+      </div>
+
+      <!-- ══ RESERVAS SCREEN ══ -->
+      <div class="screen" id="screen-reservas">
+        <div class="screen-reservas-wrap">
+          <div class="reservas-col">
+            <div class="reservas-header">
+              <span class="screen-title" data-i18n="nav_reservas">Reservas</span>
+              <button class="new-res-btn" onclick="openNewReservationModal()">
+                <span>＋</span><span data-i18n="new_res">Nueva Reserva</span>
+              </button>
+            </div>
+            <div id="reservasContainer"></div>
+          </div>
+          <div class="reservas-col" style="gap:12px">
+            <div style="font-size:14px;font-weight:700;color:#e8f0ff;padding-bottom:4px">Estacionamientos disponibles</div>
+            <div id="reservas-malls-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PERFIL SCREEN ══ -->
+      <div class="screen" id="screen-perfil">
+        <div class="perfil-desktop">
+          <div class="perfil-card">
+            <div class="avatar-wrap" onclick="document.getElementById('photoInput').click()">
+              <div class="avatar" id="profileAvatar">DT</div>
+              <div class="avatar-pencil">✏️</div>
+            </div>
+            <input type="file" id="photoInput" accept="image/*" onchange="setProfilePhoto(this)">
+            <div class="avatar-name" id="profileName">Diego Torres</div>
+            <div class="avatar-email" id="profileEmail">diego.torres@gmail.com</div>
+            <button class="edit-profile-btn" onclick="openEditProfileModal()" data-i18n="edit_profile">✏️ Editar perfil</button>
+            <div class="perfil-stats">
+              <div class="perfil-stat">
+                <div class="ps-num" id="profileResCount">4</div>
+                <div class="ps-lbl" data-i18n="nav_reservas">Reservas</div>
+              </div>
+              <div class="perfil-stat">
+                <div class="ps-num">3.5h</div>
+                <div class="ps-lbl" data-i18n="time_saved">Tiempo ahorrado</div>
+              </div>
+            </div>
+            <button class="perfil-logout-btn" onclick="logoutUser()">
+              <span>🚪</span><span data-i18n="logout">Cerrar sesión</span>
+            </button>
+          </div>
+          <div class="perfil-settings">
+            <div class="settings-section">
+              <div class="settings-section-header">Mi cuenta</div>
+              <div class="pm-item" onclick="showVehicleInfo()">
+                <div class="pm-item-icon">🚗</div>
+                <div class="pm-item-text">
+                  <div class="pm-item-label" data-i18n="vehicle_label">Mi vehículo</div>
+                  <div class="pm-item-sub" id="vehicleSub">Toyota Corolla • BCDF-42</div>
+                </div>
+                <span class="pm-item-arrow">›</span>
+              </div>
+              <div class="pm-item" onclick="openEditProfileModal()">
+                <div class="pm-item-icon">✏️</div>
+                <div class="pm-item-text">
+                  <div class="pm-item-label">Editar perfil</div>
+                  <div class="pm-item-sub">Nombre, email, teléfono</div>
+                </div>
+                <span class="pm-item-arrow">›</span>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-section-header">Preferencias</div>
+              <div class="pm-item" onclick="openNotifModal()">
+                <div class="pm-item-icon">🔔</div>
+                <div class="pm-item-text">
+                  <div class="pm-item-label" data-i18n="notif_title">Notificaciones</div>
+                  <div class="pm-item-sub" data-i18n="notif_sub">4 activas</div>
+                </div>
+                <span class="pm-item-arrow">›</span>
+              </div>
+              <div class="pm-item" onclick="openPaymentModal()">
+                <div class="pm-item-icon">💳</div>
+                <div class="pm-item-text">
+                  <div class="pm-item-label" data-i18n="payment_title">Métodos de pago</div>
+                  <div class="pm-item-sub" data-i18n="payment_sub">Visa ••4242</div>
+                </div>
+                <span class="pm-item-arrow">›</span>
+              </div>
+              <div class="pm-item">
+                <div class="pm-item-icon">🌐</div>
+                <div class="pm-item-text">
+                  <div class="pm-item-label" data-i18n="lang_label">Idioma</div>
+                  <div class="pm-item-sub" id="currentLangLabel">Español</div>
+                </div>
+                <span class="pm-item-arrow">›</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /screens-wrapper -->
+  </div><!-- /content-area -->
+</div><!-- /main-app -->
+
+<!-- CITY MODAL -->
+<div class="full-modal" id="cityModal">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <div class="modal-back" onclick="closeCityModal()">‹</div>
+      <span class="modal-title" data-i18n="select_city">Seleccionar ciudad</span>
+    </div>
+    <div class="modal-body">
+      <input class="city-search" type="text" id="citySearchInput" placeholder="Buscar ciudad..." oninput="filterCities(this.value)">
+      <div id="regionsContainer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SPOT DETAIL -->
+<div class="spot-backdrop" id="spotBackdrop" onclick="closeSpotDetail()">
+  <div class="spot-dialog" onclick="event.stopPropagation()" style="position:relative">
+    <div class="bsm-title" id="spotDetailTitle">Espacio A-01</div>
+    <div>
+      <div class="bsm-row"><span class="bsm-label" data-i18n="status_label">Estado</span><span class="bsm-value" id="spotDetailStatus">–</span></div>
+      <div class="bsm-row"><span class="bsm-label" data-i18n="level_label">Nivel</span><span class="bsm-value" id="spotDetailLevel">–</span></div>
+      <div class="bsm-row"><span class="bsm-label" data-i18n="rate_label">Tarifa</span><span class="bsm-value" id="spotDetailRate">–</span></div>
+      <div class="bsm-row"><span class="bsm-label" data-i18n="type_label">Tipo</span><span class="bsm-value" data-i18n="standard_type">Estándar</span></div>
+    </div>
+    <button class="bsm-book-btn" onclick="bookSpotFromModal()" data-i18n="book_btn">Reservar este espacio</button>
+    <button class="bsm-close-btn" onclick="closeSpotDetail()">✕</button>
+  </div>
+</div>
+
+<!-- CLOSING NOTIFICATION -->
+<div class="closing-notif" id="closingNotif">
+  <span style="font-size:20px">⏰</span>
+  <span class="closing-notif-text" id="closingNotifText">Cierre en 1 hora</span>
+  <button class="closing-notif-close" onclick="document.getElementById('closingNotif').classList.remove('show')">✕</button>
+</div>
+
+<!-- NEW RESERVATION MODAL -->
+<div class="full-modal" id="newResModal">
+  <div class="modal-panel wide">
+    <div class="modal-header">
+      <div class="modal-back" onclick="closeNewResModal()">‹</div>
+      <span class="modal-title" data-i18n="new_res_title">Nueva Reserva</span>
+    </div>
+    <div class="modal-body">
+      <div class="step-indicator">
+        <div class="step-dot active" id="sdot1">1</div>
+        <div class="step-line" id="sline1"></div>
+        <div class="step-dot" id="sdot2">2</div>
+        <div class="step-line" id="sline2"></div>
+        <div class="step-dot" id="sdot3">3</div>
+      </div>
+      <div class="modal-step active" id="step1" style="display:block">
+        <div style="font-size:13px;font-weight:700;color:#c8d8f0;margin-bottom:12px" data-i18n="step1_title">Elegir estacionamiento</div>
+        <div id="parkingListForRes"></div>
+        <div class="modal-nav-btns">
+          <button class="mnb-next" onclick="goStep(2)" data-i18n="next_btn">Siguiente →</button>
+        </div>
+      </div>
+      <div class="modal-step" id="step2" style="display:none">
+        <div style="font-size:13px;font-weight:700;color:#c8d8f0;margin-bottom:12px" data-i18n="step2_title">Fecha y hora</div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="date_label">Fecha</label>
+          <input class="form-input" type="date" id="resDate">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="time_label">Hora de entrada</label>
+          <input class="form-input" type="time" id="resTime">
+        </div>
+        <div style="background:#162035;border:1px solid #00c97a33;border-radius:12px;padding:12px 14px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-size:16px">⏱️</span>
+            <span style="font-size:12px;font-weight:700;color:#00c97a" data-i18n="open_duration">Duración libre</span>
+          </div>
+          <div style="font-size:11px;color:#5570a0;line-height:1.5" data-i18n="open_duration_desc">El tiempo corre desde tu llegada.</div>
+        </div>
+        <div class="modal-nav-btns">
+          <button class="mnb-prev" onclick="goStep(1)" data-i18n="prev_btn">← Anterior</button>
+          <button class="mnb-next" onclick="goStep(3)" data-i18n="next_btn">Siguiente →</button>
+        </div>
+      </div>
+      <div class="modal-step" id="step3" style="display:none">
+        <div style="font-size:13px;font-weight:700;color:#c8d8f0;margin-bottom:12px" data-i18n="step3_title">Confirmar reserva</div>
+        <div class="confirm-card" id="confirmCard">
+          <div class="cc-row"><span class="cc-label" data-i18n="parking_label">Estacionamiento</span><span class="cc-value" id="ccParking">–</span></div>
+          <div class="cc-row"><span class="cc-label" data-i18n="date_label">Fecha</span><span class="cc-value" id="ccDate">–</span></div>
+          <div class="cc-row"><span class="cc-label" data-i18n="time_label">Hora</span><span class="cc-value" id="ccTime">–</span></div>
+          <div class="cc-row"><span class="cc-label" data-i18n="rate_label">Tarifa</span><span class="cc-value" id="ccDuration">–</span></div>
+          <div class="cc-row"><span class="cc-label">Cierre del local</span><span class="cc-value" id="ccCost" style="color:#ffb020">–</span></div>
+        </div>
+        <div class="modal-nav-btns">
+          <button class="mnb-prev" onclick="goStep(2)" data-i18n="prev_btn">← Anterior</button>
+        </div>
+        <button class="mnb-confirm" onclick="confirmReservation()" data-i18n="confirm_btn">✓ Confirmar Reserva</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div class="full-modal" id="paymentModal">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <div class="modal-back" onclick="closeModal('paymentModal')">‹</div>
+      <span class="modal-title" data-i18n="payment_title">Métodos de pago</span>
+    </div>
+    <div class="modal-body">
+      <div class="credit-card-visual">
+        <div class="ccv-shine"></div>
+        <div class="ccv-bank">PARKIUM BANK</div>
+        <div class="ccv-chip"></div>
+        <div class="ccv-number" id="ccvNumber">•••• •••• •••• 4242</div>
+        <div class="ccv-bottom">
+          <div class="ccv-name" id="ccvName">CARLOS MUÑOZ</div>
+          <div class="ccv-expiry">
+            <div class="ccv-expiry-label">EXPIRY</div>
+            <div class="ccv-expiry-val" id="ccvExpiry">12/27</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-btns">
+        <button class="card-edit-btn" onclick="toggleCardEdit()" data-i18n="edit_card">✏️ Editar tarjeta</button>
+        <button class="card-add-btn" onclick="showToast('+ Tarjeta agregada')" data-i18n="add_card">＋ Agregar</button>
+      </div>
+      <div class="card-edit-form" id="cardEditForm">
+        <div class="form-group" style="margin-top:12px">
+          <label class="form-label" data-i18n="card_number">Número de tarjeta</label>
+          <input class="form-input" type="text" id="cardNumInput" placeholder="XXXX XXXX XXXX XXXX" maxlength="19" oninput="formatCardNumber(this)">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="card_holder">Nombre del titular</label>
+          <input class="form-input" type="text" id="cardNameInput" placeholder="NOMBRE APELLIDO">
+        </div>
+        <div style="display:flex;gap:10px">
+          <div class="form-group" style="flex:1">
+            <label class="form-label" data-i18n="expiry_label">Vencimiento</label>
+            <input class="form-input" type="text" id="cardExpiryInput" placeholder="MM/YY" maxlength="5">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label class="form-label">CVV</label>
+            <input class="form-input" type="password" id="cardCvvInput" placeholder="•••" maxlength="4">
+          </div>
+        </div>
+        <button class="card-save-btn" onclick="saveCard()" data-i18n="save_btn">💾 Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS MODAL -->
+<div class="full-modal" id="notifModal">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <div class="modal-back" onclick="closeModal('notifModal')">‹</div>
+      <span class="modal-title" data-i18n="notif_title">Notificaciones</span>
+    </div>
+    <div class="modal-body">
+      <div id="notifList"></div>
+      <button class="notif-save-btn" onclick="saveNotifs()" data-i18n="save_btn">💾 Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PROFILE MODAL -->
+<div class="full-modal" id="editProfileModal">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <div class="modal-back" onclick="closeModal('editProfileModal')">‹</div>
+      <span class="modal-title" data-i18n="edit_profile">Editar perfil</span>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" data-i18n="full_name">Nombre completo</label>
+        <input class="form-input" type="text" id="editName">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="editEmail">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="phone_label">Teléfono</label>
+        <input class="form-input" type="tel" id="editPhone">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="plate_label">Patente del vehículo</label>
+        <input class="form-input" type="text" id="editPlate">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="vehicle_type">Tipo de vehículo</label>
+        <div class="duration-pills" id="vehicleTypePills">
+          <div class="dur-pill active" onclick="selectVehicleType('Auto',this)" data-i18n="type_auto">Auto</div>
+          <div class="dur-pill" onclick="selectVehicleType('SUV',this)">SUV</div>
+          <div class="dur-pill" onclick="selectVehicleType('Camioneta',this)" data-i18n="type_truck">Camioneta</div>
+        </div>
+      </div>
+      <button class="card-save-btn" onclick="saveProfile()" data-i18n="save_changes">💾 Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// AUTH
+// ============================================================
+function getUsers() {
+  try { return JSON.parse(localStorage.getItem('parkium_users') || '[]'); } catch { return []; }
+}
+function saveUsers(u) { localStorage.setItem('parkium_users', JSON.stringify(u)); }
+function getSession() {
+  try { return JSON.parse(localStorage.getItem('parkium_session') || 'null'); } catch { return null; }
+}
+
+function switchAuthTab(tab) {
+  document.getElementById('tab-login').classList.toggle('active', tab==='login');
+  document.getElementById('tab-register').classList.toggle('active', tab==='register');
+  document.getElementById('form-login').classList.toggle('active', tab==='login');
+  document.getElementById('form-register').classList.toggle('active', tab==='register');
+}
+
+function doLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('login-pass').value;
+  const users = getUsers();
+  const user  = users.find(u => u.email === email && u.pass === pass);
+  if (!user) {
+    document.getElementById('login-error').classList.add('show');
+    return;
+  }
+  document.getElementById('login-error').classList.remove('show');
+  startSession(user);
+}
+
+function doRegister(e) {
+  e.preventDefault();
+  const name  = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('reg-pass').value;
+  const pass2 = document.getElementById('reg-pass2').value;
+  const errEl = document.getElementById('reg-error');
+  if (pass !== pass2) { errEl.textContent='Las contraseñas no coinciden'; errEl.classList.add('show'); return; }
+  const users = getUsers();
+  if (users.find(u => u.email === email)) { errEl.textContent='Este correo ya está registrado'; errEl.classList.add('show'); return; }
+  errEl.classList.remove('show');
+  const user = { name, email, pass, phone:'', plate:'', vehicle:'Auto' };
+  users.push(user);
+  saveUsers(users);
+  startSession(user);
+}
+
+function startSession(user) {
+  localStorage.setItem('parkium_session', JSON.stringify(user));
+  profileData = { name: user.name, email: user.email, phone: user.phone || '', plate: user.plate || '', vehicle: user.vehicle || 'Auto' };
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('main-app').classList.add('active');
+  syncUserUI();
+  renderSpotGrid();
+  renderReservations();
+  renderMallsListInicio();
+  renderNotifList();
+  if ('Notification' in window && Notification.permission === 'default') {
+    setTimeout(() => Notification.requestPermission(), 2000);
+  }
+  dbSave('_ping', {ts: Date.now()});
+  const observer = new MutationObserver(() => {
+    const mapScreen = document.getElementById('screen-mapa');
+    if (mapScreen.classList.contains('active') && !leafletMap) setTimeout(initMap, 300);
+  });
+  observer.observe(document.getElementById('screen-mapa'), {attributes:true, attributeFilter:['class']});
+}
+
+function logoutUser() {
+  localStorage.removeItem('parkium_session');
+  document.getElementById('main-app').classList.remove('active');
+  document.getElementById('auth-screen').classList.remove('hidden');
+  if (leafletMap) { leafletMap.remove(); leafletMap = null; }
+  if (activeTimerInterval) { clearInterval(activeTimerInterval); activeTimerInterval = null; }
+  document.getElementById('login-email').value='';
+  document.getElementById('login-pass').value='';
+  switchAuthTab('login');
+}
+
+function syncUserUI() {
+  const initials = profileData.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  ['profileAvatar','sidebarAvatar','topBarAvatar'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = initials;
+  });
+  const pn = document.getElementById('profileName'); if(pn) pn.textContent = profileData.name;
+  const pe = document.getElementById('profileEmail'); if(pe) pe.textContent = profileData.email;
+  const sn = document.getElementById('sidebarName'); if(sn) sn.textContent = profileData.name;
+  const se = document.getElementById('sidebarEmail'); if(se) se.textContent = profileData.email;
+  const vs = document.getElementById('vehicleSub');
+  if(vs) vs.textContent = `${profileData.vehicle || 'Auto'} • ${profileData.plate || '–'}`;
+}
+
+// ============================================================
+// DATA
+// ============================================================
+const TALCA_MALLS = [
+  { id:'m1', name:'Arauco Maule', address:'Av. Lircay 2249', lat:-35.4340, lng:-71.6508, total:350, avail:78, price:800, rating:4.3, covered:true, icon:'🏬', tags:['disponible','techado','cercano'], closes:'22:00' },
+  { id:'m2', name:'Falabella Talca', address:'1 Sur 898', lat:-35.4279, lng:-71.6561, total:120, avail:14, price:600, rating:4.0, covered:true, icon:'🛍️', tags:['disponible','techado','economico'], closes:'21:00' },
+  { id:'m3', name:'Ripley Talca', address:'1 Sur / 5 Oriente', lat:-35.4272, lng:-71.6539, total:100, avail:0, price:600, rating:3.9, covered:false, icon:'🏪', tags:['economico'], closes:'21:00' },
+  { id:'m4', name:'Portal Centro Talca', address:'2 Sur 770', lat:-35.4295, lng:-71.6572, total:80, avail:22, price:500, rating:4.1, covered:false, icon:'🏙️', tags:['disponible','economico','cercano'], closes:'20:00' },
+  { id:'m5', name:'Mall Plaza Maule', address:'Av. Carlos Schorr 130', lat:-35.4388, lng:-71.6434, total:600, avail:185, price:700, rating:4.6, covered:true, icon:'🏬', tags:['disponible','techado'], closes:'22:30' },
+  { id:'m6', name:'Paseo Centro Comercial', address:'1 Norte / 7 Oriente', lat:-35.4251, lng:-71.6527, total:60, avail:9, price:400, rating:3.7, covered:false, icon:'🏢', tags:['disponible','economico'], closes:'21:30' },
+];
+
+const CHILEAN_REGIONS = [
+  { name:'Arica y Parinacota', cities:['Arica','Putre'] },
+  { name:'Tarapacá', cities:['Iquique','Alto Hospicio','Pozo Almonte'] },
+  { name:'Antofagasta', cities:['Antofagasta','Calama','Tocopilla','Mejillones'] },
+  { name:'Atacama', cities:['Copiapó','Vallenar','Chañaral','Diego de Almagro'] },
+  { name:'Coquimbo', cities:['La Serena','Coquimbo','Ovalle','Illapel','Vicuña'] },
+  { name:'Valparaíso', cities:['Valparaíso','Viña del Mar','Quilpué','Villa Alemana','San Antonio','Los Andes','Quillota','Limache'] },
+  { name:'Metropolitana de Santiago', cities:['Santiago','Maipú','Puente Alto','Las Condes','San Bernardo','Providencia','Ñuñoa','La Florida','Peñalolén','Lo Barnechea'] },
+  { name:"O'Higgins", cities:['Rancagua','San Fernando','Pichilemu','Rengo','Machalí'] },
+  { name:'Maule', cities:['Talca','Curicó','Linares','Cauquenes','Constitución','Parral','San Javier'] },
+  { name:'Ñuble', cities:['Chillán','San Carlos','Bulnes','Yungay','Coihueco'] },
+  { name:'Biobío', cities:['Concepción','Talcahuano','Los Ángeles','Chiguayante','Coronel','Hualpén'] },
+  { name:'La Araucanía', cities:['Temuco','Villarrica','Pucón','Angol','Victoria','Nueva Imperial'] },
+  { name:'Los Ríos', cities:['Valdivia','La Unión','Río Bueno','Panguipulli','Futrono'] },
+  { name:'Los Lagos', cities:['Puerto Montt','Osorno','Castro','Puerto Varas','Ancud','Calbuco'] },
+  { name:'Aysén', cities:['Coyhaique','Puerto Aysén','Chile Chico','Cochrane'] },
+  { name:'Magallanes', cities:['Punta Arenas','Puerto Natales','Puerto Williams','Porvenir'] },
+];
+
+let reservationsData = [
+  { id:'r1', mallId:'m1', name:'Arauco Maule', spot:'A-14', icon:'🏬', status:'active', date:'Hoy', time:'09:30', duration:2, price:1600, closes:'22:00' },
+  { id:'r2', mallId:'m2', name:'Falabella Talca', spot:'C-03', icon:'🛍️', status:'upcoming', date:'Mañana', time:'14:00', duration:1, price:600, closes:'21:00' },
+  { id:'r3', mallId:'m5', name:'Mall Plaza Maule', spot:'B-22', icon:'🏬', status:'used', date:'05/06/2026', time:'10:00', duration:3, price:2100 },
+  { id:'r4', mallId:'m4', name:'Portal Centro Talca', spot:'D-07', icon:'🏙️', status:'used', date:'01/06/2026', time:'16:30', duration:1, price:500 },
+];
+
+let profileData = { name:'Diego Torres', email:'diego.torres@gmail.com', phone:'+56 9 8765 4321', plate:'BCDF-42', vehicle:'Auto' };
+let cardData = { number:'•••• •••• •••• 4242', name:'DIEGO TORRES', expiry:'12/27' };
+let notifState = { reservas:true, disponibilidad:true, demanda:false, recordatorios:true, ofertas:false };
+let currentLang = 'es';
+let selectedCity = 'Talca, Chile';
+let leafletMap = null;
+let userMarker = null;
+let currentRoute = null;
+let markers = {};
+let selectedMallId = null;
+let selectedSpot = null;
+let currentLevel = 1;
+let newResStep = 1;
+let newResDuration = 1;
+let newResSelectedMall = null;
+let newResVehicleType = 'Auto';
+let activeTimerInterval = null;
+let mapFilter = 'todos';
+
+// ============================================================
+// TRANSLATIONS
+// ============================================================
+const translations = {
+  es: {
+    drawer_sub:'Estacionamiento inteligente', nav_label:'Navegación', nav_inicio:'Inicio',
+    nav_mapa:'Mapa', nav_reservas:'Reservas', nav_perfil:'Perfil', settings_label:'Configuración',
+    notif_title:'Notificaciones', payment_title:'Métodos de pago', vehicle_label:'Mi vehículo',
+    lang_label:'Idioma', logout:'Cerrar sesión', stat_total:'Total', stat_avail:'Disponibles',
+    stat_occ:'Ocupados', stat_occ2:'Ocup.', alert_demand:'Alta demanda en zona central',
+    spots_title:'Mapa de espacios', legend_avail:'Libre', legend_occ:'Ocupado', legend_res:'Reservado',
+    btn_navigate:'🗺️ Ver mapa', btn_reserve:'📋 Reservar', filter_all:'Todos',
+    filter_avail:'Disponible', filter_cheap:'Económico', filter_near:'Cercano', filter_covered:'Techado',
+    nearby_lots:'Estacionamientos cercanos', new_res:'Nueva Reserva', edit_profile:'Editar perfil',
+    time_saved:'Tiempo ahorrado', notif_sub:'4 activas', payment_sub:'Visa ••4242',
+    select_city:'Seleccionar ciudad', step1_title:'Elegir estacionamiento', step2_title:'Fecha y hora',
+    step3_title:'Confirmar reserva', date_label:'Fecha', time_label:'Hora de entrada',
+    duration_label:'Duración', cost_label:'Costo estimado', parking_label:'Estacionamiento',
+    next_btn:'Siguiente →', prev_btn:'← Anterior', confirm_btn:'✓ Confirmar Reserva',
+    edit_card:'✏️ Editar tarjeta', add_card:'＋ Agregar tarjeta', save_btn:'💾 Guardar',
+    card_number:'Número de tarjeta', card_holder:'Nombre del titular', expiry_label:'Vencimiento',
+    full_name:'Nombre completo', phone_label:'Teléfono', plate_label:'Patente del vehículo',
+    vehicle_type:'Tipo de vehículo', type_auto:'Auto', type_truck:'Camioneta',
+    save_changes:'💾 Guardar cambios', status_label:'Estado', level_label:'Nivel',
+    rate_label:'Tarifa', type_label:'Tipo', standard_type:'Estándar', book_btn:'Reservar este espacio',
+    new_res_title:'Nueva Reserva', notif_label0:'Reservas activas', notif_desc0:'Tu reserva vence pronto',
+    notif_label1:'Disponibilidad', notif_desc1:'Nuevos espacios libres',
+    notif_label2:'Alta demanda', notif_desc2:'Zonas con poca disponibilidad',
+    notif_label3:'Recordatorios', notif_desc3:'30 min antes de tu reserva',
+    notif_label4:'Ofertas y promociones', notif_desc4:'Descuentos y novedades',
+    badge_active:'En uso', badge_upcoming:'Próxima', badge_used:'Usada',
+    res_navigate:'Navegar', res_cancel:'Cancelar', open_duration:'Duración libre',
+    open_duration_desc:'El tiempo corre desde tu llegada.',
+  },
+  en: {
+    drawer_sub:'Smart parking', nav_label:'Navigation', nav_inicio:'Home',
+    nav_mapa:'Map', nav_reservas:'Reservations', nav_perfil:'Profile', settings_label:'Settings',
+    notif_title:'Notifications', payment_title:'Payment methods', vehicle_label:'My vehicle',
+    lang_label:'Language', logout:'Log out', stat_total:'Total', stat_avail:'Available',
+    stat_occ:'Occupied', stat_occ2:'Occ.', alert_demand:'High demand in central area',
+    spots_title:'Spot map', legend_avail:'Free', legend_occ:'Occupied', legend_res:'Reserved',
+    btn_navigate:'🗺️ View map', btn_reserve:'📋 Reserve', filter_all:'All',
+    filter_avail:'Available', filter_cheap:'Budget', filter_near:'Nearby', filter_covered:'Covered',
+    nearby_lots:'Nearby parking', new_res:'New Reservation', edit_profile:'Edit profile',
+    time_saved:'Time saved', notif_sub:'4 active', payment_sub:'Visa ••4242',
+    select_city:'Select city', step1_title:'Choose parking', step2_title:'Date & time',
+    step3_title:'Confirm reservation', date_label:'Date', time_label:'Entry time',
+    next_btn:'Next →', prev_btn:'← Back', confirm_btn:'✓ Confirm Reservation',
+    edit_card:'✏️ Edit card', add_card:'＋ Add card', save_btn:'💾 Save',
+    card_number:'Card number', card_holder:'Cardholder name', expiry_label:'Expiry',
+    full_name:'Full name', phone_label:'Phone', plate_label:'License plate',
+    vehicle_type:'Vehicle type', type_auto:'Car', type_truck:'Truck',
+    save_changes:'💾 Save changes', status_label:'Status', level_label:'Level',
+    rate_label:'Rate', type_label:'Type', standard_type:'Standard', book_btn:'Book this spot',
+    new_res_title:'New Reservation', notif_label0:'Active reservations', notif_desc0:'Your reservation is expiring soon',
+    notif_label1:'Availability', notif_desc1:'New spots available',
+    notif_label2:'High demand', notif_desc2:'Areas with low availability',
+    notif_label3:'Reminders', notif_desc3:'30 min before your reservation',
+    notif_label4:'Offers & promotions', notif_desc4:'Discounts and news',
+    badge_active:'Active', badge_upcoming:'Upcoming', badge_used:'Used',
+    res_navigate:'Navigate', res_cancel:'Cancel', open_duration:'Open-ended stay',
+    open_duration_desc:'Timer starts when you arrive.',
+    parking_label:'Parking', duration_label:'Duration', cost_label:'Estimated cost',
+  },
+  map:{drawer_sub:'Kimeltun tañi wente winka ruka',nav_inicio:'Inagpeyüm',nav_mapa:'Mapu',nav_reservas:'Reservaciones',nav_perfil:'Ñi mongen',stat_total:'Tañi',stat_avail:'Küpalechi',stat_occ:'Kaleltuchi',alert_demand:'Dewma trawün mapu mew',spots_title:'Mapu küpalechi',legend_avail:'Küpalechi',legend_occ:'Kaleltuchi',legend_res:'Reservado',btn_navigate:'🗺️ Mapuley',btn_reserve:'📋 Reservaley',new_res:'Küme Reservación',logout:'Femgechi',badge_active:'Puwma',badge_upcoming:'Ayiwkülechi',badge_used:'Femgechi',nearby_lots:'Küme mapu',filter_all:'Kimlu',filter_avail:'Küpalechi',filter_cheap:'Pichi silver',filter_near:'Mülechi',filter_covered:'Üfüm',select_city:'Eluafimi lof',open_duration:'Mülechi wente',open_duration_desc:'Tañi mongen küpan.',edit_profile:'Kishu ñi lof',save_changes:'💾 Kimuafimi',book_btn:'Reservaley tañi mapu',payment_title:'Plata küpaley',notif_title:'Küpalchi kimün',lang_label:'Dungun',nav_label:'Navegación',settings_label:'Configuración'},
+  ht:{drawer_sub:'Pakin entèlijan',nav_inicio:'Akèy',nav_mapa:'Kat',nav_reservas:'Rezèvasyon',nav_perfil:'Pwofil',stat_total:'Total',stat_avail:'Disponib',stat_occ:'Okipe',alert_demand:'Anpil moun nan sant lavil',spots_title:'Kat espas',legend_avail:'Lib',legend_occ:'Okipe',legend_res:'Rezève',btn_navigate:'🗺️ Wè kat',btn_reserve:'📋 Rezève',new_res:'Nouvo Rezèvasyon',logout:'Dekonekte',badge_active:'Nan itilizasyon',badge_upcoming:'Pwochen',badge_used:'Fini',nearby_lots:'Pakin toupre',filter_all:'Tout',filter_avail:'Disponib',filter_cheap:'Bon mache',filter_near:'Pre',filter_covered:'Kouvri',select_city:'Chwazi vil',open_duration:'Dire lib',open_duration_desc:'Kont tan kòmanse lè ou rive.',edit_profile:'Edite pwofil',save_changes:'💾 Sove',book_btn:'Rezève espas sa a',payment_title:'Metòd peman',notif_title:'Notifikasyon',lang_label:'Lang',nav_label:'Navigasyon',settings_label:'Paramèt'},
+  zh:{drawer_sub:'智能停车管理',nav_inicio:'首页',nav_mapa:'地图',nav_reservas:'预约',nav_perfil:'个人',stat_total:'总数',stat_avail:'空闲',stat_occ:'占用',alert_demand:'市中心需求高',spots_title:'车位地图',legend_avail:'空闲',legend_occ:'占用',legend_res:'已预约',btn_navigate:'🗺️ 查看地图',btn_reserve:'📋 预约',new_res:'新预约',logout:'退出登录',badge_active:'使用中',badge_upcoming:'即将',badge_used:'已用',nearby_lots:'附近停车场',filter_all:'全部',filter_avail:'空闲',filter_cheap:'经济',filter_near:'附近',filter_covered:'有顶',select_city:'选择城市',open_duration:'自由时长',open_duration_desc:'到达后开始计时。',edit_profile:'编辑资料',save_changes:'💾 保存',book_btn:'预约此车位',payment_title:'支付方式',notif_title:'通知',lang_label:'语言',nav_label:'导航',settings_label:'设置'},
+  pt:{drawer_sub:'Estacionamento inteligente',nav_inicio:'Início',nav_mapa:'Mapa',nav_reservas:'Reservas',nav_perfil:'Perfil',stat_total:'Total',stat_avail:'Disponíveis',stat_occ:'Ocupados',alert_demand:'Alta demanda no centro',spots_title:'Mapa de vagas',legend_avail:'Livre',legend_occ:'Ocupado',legend_res:'Reservado',btn_navigate:'🗺️ Ver mapa',btn_reserve:'📋 Reservar',new_res:'Nova Reserva',logout:'Sair',badge_active:'Em uso',badge_upcoming:'Próxima',badge_used:'Usada',nearby_lots:'Estacionamentos próximos',filter_all:'Todos',filter_avail:'Disponível',filter_cheap:'Econômico',filter_near:'Próximo',filter_covered:'Coberto',select_city:'Selecionar cidade',open_duration:'Duração livre',open_duration_desc:'O tempo começa quando você chega.',edit_profile:'Editar perfil',save_changes:'💾 Salvar',book_btn:'Reservar esta vaga',payment_title:'Métodos de pagamento',notif_title:'Notificações',lang_label:'Idioma',nav_label:'Navegação',settings_label:'Configurações'}
+};
+
+function t(key) { return (translations[currentLang]&&translations[currentLang][key])||(translations['es'][key])||key; }
+
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = t(key);
+    if (val && val !== key) el.textContent = val;
+  });
+  const sel = document.getElementById('langSelect');
+  if (sel) sel.value = lang;
+  const langNames = {es:'Español',en:'English',map:'Mapudungun',ht:'Kreyòl',zh:'中文',pt:'Português'};
+  const lbl = document.getElementById('currentLangLabel');
+  if (lbl) lbl.textContent = langNames[lang] || lang;
+  renderReservations();
+  renderNotifList();
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+const screenTitles = {inicio:'Inicio',mapa:'Mapa',reservas:'Reservas',perfil:'Perfil'};
+
+function navigateTo(screen) {
+  closeSpotDetail();
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + screen).classList.add('active');
+  const nb = document.getElementById('nav-' + screen);
+  if (nb) nb.classList.add('active');
+  const tb = document.getElementById('topBarTitle');
+  if (tb) tb.textContent = t('nav_'+screen) || screenTitles[screen] || screen;
+  if (screen === 'mapa') {
+    setTimeout(() => { if (leafletMap) leafletMap.invalidateSize(); else initMap(); }, 300);
+  }
+  if (screen === 'perfil') {
+    const prc = document.getElementById('profileResCount');
+    if(prc) prc.textContent = reservationsData.length;
+  }
+  if (screen === 'reservas') renderReservationsMallList();
+}
+
+// Keep for any legacy calls
+function openDrawer() {}
+function closeDrawer() {}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// MALLS LIST (Inicio sidebar)
+// ============================================================
+function renderMallsListInicio() {
+  const container = document.getElementById('mallsListInicio');
+  if (!container) return;
+  container.innerHTML = '';
+  TALCA_MALLS.forEach(mall => {
+    const ac = mall.avail > 20 ? 'mall-avail-ok' : mall.avail > 0 ? 'mall-avail-low' : 'mall-avail-full';
+    const at = mall.avail > 0 ? `${mall.avail} disponibles` : 'Sin disponibilidad';
+    const div = document.createElement('div');
+    div.className = 'mall-row';
+    div.innerHTML = `
+      <div class="mall-row-icon">${mall.icon}</div>
+      <div class="mall-row-info">
+        <div class="mall-row-name">${mall.name}</div>
+        <div class="mall-row-addr">${mall.address}</div>
+        <div class="mall-row-avail ${ac}">${at}</div>
+      </div>
+      <div class="mall-price">$${mall.price}/hr</div>
+    `;
+    div.onclick = () => { navigateTo('mapa'); setTimeout(()=>selectMall(mall.id),400); };
+    container.appendChild(div);
+  });
+}
+
+// ============================================================
+// SPOT GRID (INICIO)
+// ============================================================
+function buildSpotData(level) {
+  const rows=['A','B','C','D','E','F'],cols=8;
+  let occupied=[3,4,8,9,13,16,18,20,24,25,27,30,33,35,38,40,43],reserved=[2,10,22,37];
+  if(level===2){occupied=[1,5,7,11,15,19,22,26,28,31,34,36,39,41,44];reserved=[4,13,25,42];}
+  if(level===3){occupied=[2,4,6,12,16,20,23,27,29,32,35,38,40,43,46];reserved=[7,17,30,44];}
+  const spots=[];let idx=0;
+  rows.forEach(r=>{for(let c=1;c<=cols;c++){idx++;const id=`${r}-${String(c).padStart(2,'0')}`;let type='avail';if(occupied.includes(idx))type='occ';if(reserved.includes(idx))type='reserved';spots.push({id,type,level});}});
+  return spots;
+}
+let allSpots = buildSpotData(1);
+
+function renderSpotGrid(filter='') {
+  const container = document.getElementById('spotGrid');
+  if (!container) return;
+  const VW=358,LABEL=18,COLS=8,ROWS=6,SW=38,SH=44,GAP=3,LANE=30,HDR=14,FOOT=22;
+  const totalW=COLS*SW+(COLS-1)*GAP;
+  const startX=LABEL+Math.floor((VW-LABEL-totalW)/2);
+  const lane1Y=HDR+SH*2+GAP*2;
+  const lane2Y=HDR+SH*4+GAP*4+LANE+GAP;
+  const rowY=[HDR,HDR+SH+GAP,lane1Y+LANE+GAP,lane1Y+LANE+GAP+SH+GAP,lane2Y+LANE+GAP,lane2Y+LANE+GAP+SH+GAP];
+  const VH=rowY[5]+SH+FOOT;
+  const rowLabels=['A','B','C','D','E','F'],laneYs=[lane1Y,lane2Y],arrowDirs=['▶','◀'];
+  let s=`<svg viewBox="0 0 ${VW} ${VH}" width="100%" height="${VH}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto">`;
+  s+=`<defs><linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1b1b1b"/><stop offset="100%" stop-color="#202020"/></linearGradient><linearGradient id="laneGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2b2b2b"/><stop offset="100%" stop-color="#252525"/></linearGradient><linearGradient id="carBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#484848"/><stop offset="100%" stop-color="#333"/></linearGradient><filter id="glowG" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
+  s+=`<rect width="${VW}" height="${VH}" fill="url(#bgGrad)" rx="0"/>`;
+  for(let gx=6;gx<VW;gx+=14)for(let gy=0;gy<VH;gy+=14)s+=`<circle cx="${gx+(gy%3)}" cy="${gy}" r="0.6" fill="#fff" opacity="0.018"/>`;
+  laneYs.forEach((ly,li)=>{
+    s+=`<rect x="0" y="${ly}" width="${VW}" height="${LANE}" fill="url(#laneGrad)"/>`;
+    s+=`<rect x="0" y="${ly}" width="${VW}" height="2" fill="#000" opacity="0.25"/>`;
+    s+=`<rect x="0" y="${ly+LANE-2}" width="${VW}" height="2" fill="#000" opacity="0.25"/>`;
+    for(let x=14;x<VW-8;x+=20)s+=`<rect x="${x}" y="${ly+LANE/2-1.5}" width="11" height="3" fill="#e8b800" rx="1.5" opacity="0.65"/>`;
+    [VW*.25,VW*.72].forEach(ax=>s+=`<text x="${ax}" y="${ly+LANE/2+4.5}" text-anchor="middle" fill="#e8b800" font-size="10" opacity="0.45" font-family="sans-serif">${arrowDirs[li]}</text>`);
+  });
+  for(let c=0;c<COLS;c++){const cx=startX+c*(SW+GAP)+SW/2;s+=`<text x="${cx}" y="${HDR-2}" text-anchor="middle" fill="#354f72" font-size="8" font-family="sans-serif" font-weight="700">${c+1}</text>`;}
+  const entX=startX+totalW/2;
+  s+=`<text x="${entX}" y="${VH-5}" text-anchor="middle" fill="#354f72" font-size="8.5" font-family="sans-serif" letter-spacing="2.5">ENTRADA  ↑</text>`;
+  s+=`<line x1="${startX}" y1="${VH-FOOT+3}" x2="${startX+totalW}" y2="${VH-FOOT+3}" stroke="#354f72" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.5"/>`;
+  allSpots.forEach((spot,idx)=>{
+    const col=idx%COLS,ri=Math.floor(idx/COLS);
+    if(ri>=ROWS)return;
+    if(filter&&!spot.id.toLowerCase().includes(filter.toLowerCase()))return;
+    const x=startX+col*(SW+GAP),y=rowY[ri],faceUp=ri%2===0;
+    if(col===0)s+=`<text x="${LABEL/2}" y="${y+SH/2+4}" text-anchor="middle" fill="#3a5878" font-size="9" font-weight="800" font-family="sans-serif">${rowLabels[ri]}</text>`;
+    if(col<COLS-1)s+=`<line x1="${x+SW+1}" y1="${y+4}" x2="${x+SW+1}" y2="${y+SH-4}" stroke="#fff" stroke-width="0.4" opacity="0.12"/>`;
+    if(spot.type==='avail'){
+      const oc=`onclick="showSpotDetail({id:'${spot.id}',type:'${spot.type}',level:${spot.level}})"`;
+      s+=`<rect x="${x-1}" y="${y-1}" width="${SW+2}" height="${SH+2}" fill="none" stroke="#00c97a" stroke-width="0.6" rx="3" opacity="0.25"/>`;
+      s+=`<rect x="${x}" y="${y}" width="${SW}" height="${SH}" fill="#00c97a0e" stroke="#00c97a" stroke-width="1.4" rx="2.5" cursor="pointer" ${oc} filter="url(#glowG)"/>`;
+      const lx1=x+Math.floor(SW*.32),lx2=x+Math.floor(SW*.68);
+      s+=`<line x1="${lx1}" y1="${y+3}" x2="${lx1}" y2="${y+SH-3}" stroke="#fff" stroke-width="0.5" opacity="0.1"/>`;
+      s+=`<line x1="${lx2}" y1="${y+3}" x2="${lx2}" y2="${y+SH-3}" stroke="#fff" stroke-width="0.5" opacity="0.1"/>`;
+      s+=`<text x="${x+SW/2}" y="${y+SH*.55+4}" text-anchor="middle" fill="#00c97a" font-size="13" font-weight="900" font-family="sans-serif" cursor="pointer" ${oc}>P</text>`;
+      s+=`<text x="${x+SW/2}" y="${y+SH-5}" text-anchor="middle" fill="#00c97a" font-size="6.5" font-weight="700" font-family="sans-serif" opacity="0.75" cursor="pointer" ${oc}>${spot.id}</text>`;
+    } else if(spot.type==='reserved'){
+      s+=`<rect x="${x}" y="${y}" width="${SW}" height="${SH}" fill="#4a9eff0c" stroke="#4a9eff" stroke-width="1.4" rx="2.5"/>`;
+      s+=`<text x="${x+SW/2}" y="${y+SH*.55+4}" text-anchor="middle" fill="#4a9eff" font-size="13" font-weight="900" font-family="sans-serif">R</text>`;
+      s+=`<text x="${x+SW/2}" y="${y+SH-5}" text-anchor="middle" fill="#4a9eff" font-size="6.5" font-weight="700" font-family="sans-serif" opacity="0.7">${spot.id}</text>`;
+    } else {
+      s+=`<rect x="${x}" y="${y}" width="${SW}" height="${SH}" fill="#212121" stroke="#2e2e2e" stroke-width="1" rx="2.5"/>`;
+      const m=3,bx=x+m,by=y+m,bw=SW-m*2,bh=SH-m*2;
+      s+=`<rect x="${bx+1}" y="${by+2}" width="${bw}" height="${bh}" fill="#000" rx="5" opacity="0.35"/>`;
+      s+=`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="url(#carBody)" rx="5"/>`;
+      const hoodH=Math.round(bh*.22),hoodY=faceUp?by:by+bh-hoodH;
+      s+=`<rect x="${bx+2}" y="${hoodY}" width="${bw-4}" height="${hoodH}" fill="#555" rx="3"/>`;
+      const wsH=Math.round(bh*.20),wsY=faceUp?by+hoodH:by+bh-hoodH-wsH;
+      s+=`<rect x="${bx+3}" y="${wsY}" width="${bw-6}" height="${wsH}" fill="#1e3a54" rx="2" opacity="0.9"/>`;
+      s+=`<line x1="${bx+5}" y1="${wsY+3}" x2="${bx+bw-5}" y2="${wsY+3}" stroke="#fff" stroke-width="0.6" opacity="0.2"/>`;
+      const roofH=bh-hoodH-wsH*2;
+      if(roofH>2){s+=`<rect x="${bx+2}" y="${faceUp?wsY+wsH:wsY+wsH}" width="${bw-4}" height="${Math.max(roofH,4)}" fill="#4a4a4a" rx="2"/>`;s+=`<rect x="${bx+bw/2-2}" y="${faceUp?wsY+wsH+1:wsY+wsH+1}" width="4" height="${Math.max(roofH-2,2)}" fill="#555" rx="1" opacity="0.5"/>`;}
+      const rws=faceUp?by+bh-hoodH-wsH:by+hoodH;
+      s+=`<rect x="${bx+3}" y="${rws}" width="${bw-6}" height="${wsH}" fill="#1a2e3e" rx="2" opacity="0.8"/>`;
+      const wr=2.8;
+      [[bx+wr+.5,by+wr],[bx+bw-wr-.5,by+wr],[bx+wr+.5,by+bh-wr],[bx+bw-wr-.5,by+bh-wr]].forEach(([wx,wy])=>{s+=`<circle cx="${wx}" cy="${wy}" r="${wr+.5}" fill="#111"/>`;s+=`<circle cx="${wx}" cy="${wy}" r="${wr-.8}" fill="#2a2a2a"/>`;});
+    }
+    if(col===0&&ri===4&&spot.type==='avail')s+=`<text x="${x+SW/2}" y="${y+SH*.55+4}" text-anchor="middle" font-size="14" opacity="0.5">♿</text>`;
+  });
+  s+=`</svg>`;
+  container.innerHTML=s;
+}
+
+function selectLevel(n,btn){currentLevel=n;document.querySelectorAll('.level-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');allSpots=buildSpotData(n);renderSpotGrid(document.getElementById('spotSearch').value);}
+function filterSpots(v){renderSpotGrid(v);}
+
+function showSpotDetail(spot) {
+  selectedSpot=spot;
+  document.getElementById('spotDetailTitle').textContent=`Espacio ${spot.id}`;
+  document.getElementById('spotDetailStatus').textContent='🟢 Disponible';
+  document.getElementById('spotDetailLevel').textContent=`Nivel ${spot.level}`;
+  document.getElementById('spotDetailRate').textContent='$600/hora';
+  document.getElementById('spotBackdrop').classList.add('open');
+}
+function closeSpotDetail(){document.getElementById('spotBackdrop').classList.remove('open');}
+function bookSpotFromModal(){closeSpotDetail();openNewReservationModal();}
+
+// ============================================================
+// MAP (LEAFLET)
+// ============================================================
+function initMap() {
+  if(leafletMap)return;
+  const mapEl=document.getElementById('leaflet-map');
+  if(!mapEl)return;
+  // Make sure the element has height
+  mapEl.style.height='100%';
+  leafletMap=L.map('leaflet-map',{center:[-35.4264,-71.6553],zoom:14,zoomControl:false,attributionControl:false});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(leafletMap);
+  renderMapMarkers(TALCA_MALLS);
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const {latitude:lat,longitude:lng}=pos.coords;
+      userMarker=L.circleMarker([lat,lng],{radius:8,fillColor:'#4a9eff',color:'#fff',weight:2,fillOpacity:1}).addTo(leafletMap);
+      leafletMap.setView([lat,lng],15);
+    },()=>{});
+  }
+}
+
+function renderMapMarkers(malls) {
+  Object.values(markers).forEach(m=>{if(m.marker)m.marker.remove();if(m.circle)m.circle.remove();});
+  markers={};
+  malls.forEach(mall=>{
+    const cls=mall.avail>20?'marker-avail':mall.avail>0?'marker-low':'marker-full';
+    const icon=L.divIcon({className:'',html:`<div class="custom-marker ${cls}">${mall.icon}</div>`,iconSize:[34,34],iconAnchor:[17,17]});
+    const m=L.marker([mall.lat,mall.lng],{icon}).addTo(leafletMap);
+    m.on('click',()=>selectMall(mall.id));
+    markers[mall.id]={marker:m,circle:null,data:mall};
+  });
+  renderMapCards(malls);
+}
+
+function renderMapCards(malls) {
+  const container=document.getElementById('mbsCards');
+  if(!container)return;
+  container.innerHTML='';
+  malls.forEach(mall=>{
+    const ac=mall.avail>20?'ok':mall.avail>0?'low':'full';
+    const at=mall.avail>0?`${mall.avail} disponibles`:'Sin disponibilidad';
+    const div=document.createElement('div');
+    div.className='mbs-card'+(selectedMallId===mall.id?' selected':'');
+    div.id='mbs-'+mall.id;
+    div.innerHTML=`
+      <div class="mbs-card-top">
+        <div class="mbs-card-icon">${mall.icon}</div>
+        <div><div class="mbs-card-name">${mall.name}</div><div class="mbs-card-addr">${mall.address}</div></div>
+      </div>
+      <div class="mbs-card-avail ${ac}">${at}</div>
+      <div class="mbs-card-price">$${mall.price}/hr • ⭐ ${mall.rating} • ${mall.covered?'🏛 Techado':'🌤 Descubierto'}</div>
+      <button class="mbs-card-nav" onclick="selectMall('${mall.id}')">🔵 Cómo llegar</button>
+    `;
+    div.onclick=(e)=>{if(e.target.tagName!=='BUTTON')selectMall(mall.id);};
+    container.appendChild(div);
+  });
+}
+
+function selectMall(id) {
+  selectedMallId=id;
+  const mall=TALCA_MALLS.find(m=>m.id===id);
+  if(!mall)return;
+  if(leafletMap)leafletMap.setView([mall.lat,mall.lng],16);
+  document.querySelectorAll('.mbs-card').forEach(c=>c.classList.remove('selected'));
+  const card=document.getElementById('mbs-'+id);
+  if(card)card.classList.add('selected');
+  const rb=document.getElementById('routeInfoBar');
+  document.getElementById('ribName').textContent=mall.name;
+  document.getElementById('ribDist').textContent=`${mall.address} • $${mall.price}/hr`;
+  rb.classList.add('visible');
+  if(userMarker&&leafletMap){
+    const ul=userMarker.getLatLng();
+    const dist=calcDist(ul.lat,ul.lng,mall.lat,mall.lng);
+    document.getElementById('ribDist').textContent=`${(dist*1000).toFixed(0)}m · $${mall.price}/hr`;
+    if(currentRoute){currentRoute.remove();currentRoute=null;}
+    currentRoute=L.polyline([[ul.lat,ul.lng],[mall.lat,mall.lng]],{color:'#4a9eff',weight:3,dashArray:'8,4',opacity:.8}).addTo(leafletMap);
+    leafletMap.fitBounds([[ul.lat,ul.lng],[mall.lat,mall.lng]],{padding:[40,40]});
+  }
+}
+
+function clearRoute(){if(currentRoute){currentRoute.remove();currentRoute=null;}document.getElementById('routeInfoBar').classList.remove('visible');selectedMallId=null;document.querySelectorAll('.mbs-card').forEach(c=>c.classList.remove('selected'));}
+function recenterMap(){if(leafletMap&&userMarker)leafletMap.setView(userMarker.getLatLng(),15);else if(leafletMap)leafletMap.setView([-35.4264,-71.6553],14);}
+function calcDist(lat1,lon1,lat2,lon2){const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180,a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+
+function setMapFilter(f,el){
+  mapFilter=f;
+  document.querySelectorAll('.filter-pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  const filtered=f==='todos'?TALCA_MALLS:TALCA_MALLS.filter(m=>m.tags.includes(f));
+  renderMapMarkers(filtered);
+  renderMapCards(filtered);
+}
+
+function filterMapParkings(v){
+  const filtered=TALCA_MALLS.filter(m=>m.name.toLowerCase().includes(v.toLowerCase())||m.address.toLowerCase().includes(v.toLowerCase()));
+  renderMapMarkers(filtered);
+  renderMapCards(filtered);
+}
+
+// ============================================================
+// RESERVATIONS
+// ============================================================
+function renderReservations() {
+  const container=document.getElementById('reservasContainer');
+  if(!container)return;
+  container.innerHTML='';
+  const active=reservationsData.filter(r=>r.status==='active');
+  const upcoming=reservationsData.filter(r=>r.status==='upcoming');
+  const used=reservationsData.filter(r=>r.status==='used');
+  if(active.length){const sec=document.createElement('div');sec.innerHTML=`<div class="res-section-title">${t('badge_active')}</div>`;active.forEach(r=>sec.appendChild(buildResCard(r)));container.appendChild(sec);}
+  if(upcoming.length){const sec=document.createElement('div');sec.innerHTML=`<div class="res-section-title">${t('badge_upcoming')}</div>`;upcoming.forEach(r=>sec.appendChild(buildResCard(r)));container.appendChild(sec);}
+  if(used.length){const sec=document.createElement('div');sec.innerHTML=`<div class="res-section-title">${t('badge_used')}</div>`;used.forEach(r=>sec.appendChild(buildResCard(r)));container.appendChild(sec);}
+  if(!reservationsData.length)container.innerHTML='<div class="empty-state">Sin reservas</div>';
+  if(activeTimerInterval)clearInterval(activeTimerInterval);
+  const activeRes=reservationsData.find(r=>r.status==='active');
+  if(activeRes){
+    const startTime=new Date();startTime.setHours(9,30,0,0);
+    const mall=TALCA_MALLS.find(m=>m.id===activeRes.mallId);
+    let closingNotifFired=false;
+    activeTimerInterval=setInterval(()=>{
+      const now=new Date();
+      let elapsed=Math.max(0,Math.floor((now-startTime)/1000));
+      const h=String(Math.floor(elapsed/3600)).padStart(2,'0');
+      const m=String(Math.floor((elapsed%3600)/60)).padStart(2,'0');
+      const s=String(elapsed%60).padStart(2,'0');
+      const el=document.getElementById('timer-'+activeRes.id);
+      if(el)el.textContent=`${h}:${m}:${s}`;
+      if(mall&&!closingNotifFired){
+        const[ch,cm]=mall.closes.split(':').map(Number);
+        const closeMs=new Date();closeMs.setHours(ch,cm,0,0);
+        const minsLeft=(closeMs-now)/60000;
+        if(minsLeft>0&&minsLeft<=60){
+          closingNotifFired=true;
+          const mins=Math.round(minsLeft);
+          const notif=document.getElementById('closingNotif');
+          document.getElementById('closingNotifText').textContent=`⏰ ${mall.name} cierra en ${mins} min (${mall.closes})`;
+          notif.classList.add('show');
+          setTimeout(()=>notif.classList.remove('show'),8000);
+        }
+      }
+    },1000);
+  }
+}
+
+function renderReservationsMallList() {
+  const container=document.getElementById('reservas-malls-list');
+  if(!container)return;
+  container.innerHTML='';
+  TALCA_MALLS.filter(m=>m.avail>0).forEach(mall=>{
+    const ac=mall.avail>20?'mall-avail-ok':'mall-avail-low';
+    const div=document.createElement('div');
+    div.className='mall-row';
+    div.innerHTML=`<div class="mall-row-icon">${mall.icon}</div><div class="mall-row-info"><div class="mall-row-name">${mall.name}</div><div class="mall-row-addr">${mall.address}</div><div class="mall-row-avail ${ac}">${mall.avail} disponibles</div></div><div class="mall-price">$${mall.price}/hr</div>`;
+    div.onclick=()=>{openNewReservationModal();};
+    container.appendChild(div);
+  });
+}
+
+function buildResCard(r) {
+  const div=document.createElement('div');
+  div.className='res-card';
+  let badgeHtml='';
+  if(r.status==='active')badgeHtml=`<span class="res-badge badge-active">${t('badge_active')}</span>`;
+  else if(r.status==='upcoming')badgeHtml=`<span class="res-badge badge-upcoming">${t('badge_upcoming')}</span>`;
+  else badgeHtml=`<span class="res-badge badge-used">${t('badge_used')}</span>`;
+  let timerHtml=r.status==='active'?`<div class="res-detail"><span>⏱️</span> <span class="res-timer" id="timer-${r.id}">00:00:00</span></div>`:'';
+  let actionsHtml=r.status!=='used'?`<div class="res-actions"><button class="res-action-btn res-btn-nav" onclick="navigateTo('mapa')">${t('res_navigate')} 🗺️</button><button class="res-action-btn res-btn-cancel" onclick="cancelReservation('${r.id}')">${t('res_cancel')}</button></div>`:'';
+  const closesTag=r.closes?`<div class="res-detail"><span>🏬</span> <strong>Cierra ${r.closes}</strong></div>`:'';
+  div.innerHTML=`<div class="res-card-top"><div class="res-icon">${r.icon}</div><div class="res-card-info"><div class="res-name">${r.name}</div><div class="res-spot">Espacio ${r.spot}</div></div>${badgeHtml}</div><div class="res-card-details"><div class="res-detail"><span>📅</span> <strong>${r.date}</strong></div><div class="res-detail"><span>🕐</span> <strong>${r.time}</strong></div><div class="res-detail"><span>💰</span> <strong>$${r.price}/hr</strong></div>${closesTag}${timerHtml}</div>${actionsHtml}`;
+  return div;
+}
+
+function cancelReservation(id){reservationsData=reservationsData.filter(r=>r.id!==id);renderReservations();showToast(currentLang==='es'?'✓ Reserva cancelada':'✓ Reservation cancelled');}
+
+// ============================================================
+// NEW RESERVATION MODAL
+// ============================================================
+function openNewReservationModal() {
+  newResStep=1;newResSelectedMall=null;newResDuration=1;
+  const now=new Date(),pad=n=>String(n).padStart(2,'0');
+  document.getElementById('resDate').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  const later=new Date(now.getTime()+30*60000);
+  document.getElementById('resTime').value=`${pad(later.getHours())}:${pad(later.getMinutes())}`;
+  const list=document.getElementById('parkingListForRes');
+  list.innerHTML='';
+  TALCA_MALLS.forEach(mall=>{
+    const div=document.createElement('div');
+    div.className='parking-list-item';
+    div.id='pli-'+mall.id;
+    const ac=mall.avail>20?'ok':mall.avail>0?'low':'full';
+    const at=mall.avail>0?`${mall.avail} disponibles`:'Sin disponibilidad';
+    div.innerHTML=`<div class="pli-icon">${mall.icon}</div><div class="pli-info"><div class="pli-name">${mall.name}</div><div class="pli-addr">${mall.address}</div><div class="pli-avail ${ac}">${at}</div></div><div style="font-size:11px;color:#4a9eff;font-weight:600">$${mall.price}/hr</div>`;
+    div.onclick=()=>{if(mall.avail===0){showToast('Sin disponibilidad');return;}newResSelectedMall=mall;document.querySelectorAll('.parking-list-item').forEach(e=>e.classList.remove('selected'));div.classList.add('selected');};
+    list.appendChild(div);
+  });
+  updateStepIndicator(1);
+  document.getElementById('step1').style.display='block';
+  document.getElementById('step2').style.display='none';
+  document.getElementById('step3').style.display='none';
+  document.getElementById('newResModal').classList.add('open');
+}
+function closeNewResModal(){document.getElementById('newResModal').classList.remove('open');}
+
+function goStep(n){
+  if(n===2&&!newResSelectedMall){showToast('Selecciona un estacionamiento');return;}
+  newResStep=n;
+  ['step1','step2','step3'].forEach((id,i)=>{document.getElementById(id).style.display=i+1===n?'block':'none';});
+  updateStepIndicator(n);
+  if(n===3)buildConfirmCard();
+}
+
+function updateStepIndicator(n){
+  [1,2,3].forEach(i=>{const dot=document.getElementById('sdot'+i);dot.classList.remove('active','done');if(i<n)dot.classList.add('done');else if(i===n)dot.classList.add('active');});
+  [1,2].forEach(i=>{const line=document.getElementById('sline'+i);line.classList.toggle('done',i<n);});
+}
+
+function buildConfirmCard(){
+  if(!newResSelectedMall)return;
+  const dateVal=document.getElementById('resDate').value,timeVal=document.getElementById('resTime').value;
+  document.getElementById('ccParking').textContent=newResSelectedMall.name;
+  document.getElementById('ccDate').textContent=dateVal;
+  document.getElementById('ccTime').textContent=timeVal;
+  document.getElementById('ccDuration').textContent=`$${newResSelectedMall.price}/hr`;
+  document.getElementById('ccCost').textContent=newResSelectedMall.closes||'–';
+}
+
+function confirmReservation(){
+  if(!newResSelectedMall)return;
+  const dateVal=document.getElementById('resDate').value,timeVal=document.getElementById('resTime').value;
+  const spots=['A','B','C','D','E'];
+  const r=String(Math.floor(Math.random()*99)+1).padStart(2,'0');
+  const newRes={id:'r'+Date.now(),mallId:newResSelectedMall.id,name:newResSelectedMall.name,spot:`${spots[Math.floor(Math.random()*5)]}-${r}`,icon:newResSelectedMall.icon,status:'upcoming',date:dateVal,time:timeVal,duration:null,price:newResSelectedMall.price,closes:newResSelectedMall.closes};
+  reservationsData.unshift(newRes);
+  dbSave('reservations',reservationsData);
+  closeNewResModal();
+  renderReservations();
+  navigateTo('reservas');
+  setTimeout(()=>showToast('✓ Reserva creada'),300);
+}
+
+// ============================================================
+// CITY MODAL
+// ============================================================
+function buildRegions(){
+  const container=document.getElementById('regionsContainer');container.innerHTML='';
+  CHILEAN_REGIONS.forEach(region=>{
+    const sec=document.createElement('div');sec.className='region-section';
+    const header=document.createElement('div');header.className='region-header';
+    header.innerHTML=`<span class="region-name">${region.name}</span><span class="region-arrow">▾</span>`;
+    const citiesDiv=document.createElement('div');citiesDiv.className='region-cities';
+    region.cities.forEach(city=>{const item=document.createElement('div');item.className='city-item'+(city==='Talca'?' active':'');item.textContent=city;item.onclick=()=>selectCity(city,region.name);citiesDiv.appendChild(item);});
+    header.onclick=()=>{const isOpen=citiesDiv.classList.contains('open');citiesDiv.classList.toggle('open',!isOpen);header.querySelector('.region-arrow').classList.toggle('open',!isOpen);};
+    if(region.name==='Maule'){citiesDiv.classList.add('open');header.querySelector('.region-arrow').classList.add('open');}
+    sec.appendChild(header);sec.appendChild(citiesDiv);container.appendChild(sec);
+  });
+}
+function openCityModal(){buildRegions();document.getElementById('citySearchInput').value='';document.getElementById('cityModal').classList.add('open');}
+function closeCityModal(){document.getElementById('cityModal').classList.remove('open');}
+function selectCity(city,region){selectedCity=`${city}, Chile`;document.getElementById('locationText').textContent=selectedCity;closeCityModal();showToast(`📍 ${city}`);}
+function filterCities(v){
+  const container=document.getElementById('regionsContainer');
+  if(!v){buildRegions();return;}
+  container.innerHTML='';
+  CHILEAN_REGIONS.forEach(region=>{
+    const matches=region.cities.filter(c=>c.toLowerCase().includes(v.toLowerCase()));
+    if(!matches.length)return;
+    const sec=document.createElement('div');sec.className='region-section';
+    const header=document.createElement('div');header.className='region-header';
+    header.innerHTML=`<span class="region-name">${region.name}</span>`;
+    const citiesDiv=document.createElement('div');citiesDiv.className='region-cities open';
+    matches.forEach(city=>{const item=document.createElement('div');item.className='city-item';item.textContent=city;item.onclick=()=>selectCity(city,region.name);citiesDiv.appendChild(item);});
+    sec.appendChild(header);sec.appendChild(citiesDiv);container.appendChild(sec);
+  });
+}
+
+// ============================================================
+// PAYMENT MODAL
+// ============================================================
+function openPaymentModal(){document.getElementById('ccvNumber').textContent=cardData.number;document.getElementById('ccvName').textContent=cardData.name;document.getElementById('ccvExpiry').textContent=cardData.expiry;document.getElementById('cardEditForm').classList.remove('visible');document.getElementById('paymentModal').classList.add('open');}
+function toggleCardEdit(){const form=document.getElementById('cardEditForm');const visible=form.classList.contains('visible');form.classList.toggle('visible',!visible);if(!visible){document.getElementById('cardNumInput').value='';document.getElementById('cardNameInput').value=cardData.name;document.getElementById('cardExpiryInput').value=cardData.expiry;document.getElementById('cardCvvInput').value='';}}
+function formatCardNumber(input){let v=input.value.replace(/\D/g,'').substring(0,16);input.value=v.replace(/(.{4})/g,'$1 ').trim();}
+function saveCard(){const num=document.getElementById('cardNumInput').value.replace(/\s/g,''),name=document.getElementById('cardNameInput').value.toUpperCase(),expiry=document.getElementById('cardExpiryInput').value;if(num.length>=4)cardData.number=`•••• •••• •••• ${num.slice(-4)}`;if(name)cardData.name=name;if(expiry)cardData.expiry=expiry;document.getElementById('ccvNumber').textContent=cardData.number;document.getElementById('ccvName').textContent=cardData.name;document.getElementById('ccvExpiry').textContent=cardData.expiry;document.getElementById('cardEditForm').classList.remove('visible');dbSave('card',cardData);showToast(currentLang==='es'?'✓ Tarjeta guardada':'✓ Card saved');}
+
+// ============================================================
+// NOTIFICATIONS MODAL
+// ============================================================
+function renderNotifList(){
+  const keys=['reservas','disponibilidad','demanda','recordatorios','ofertas'];
+  const list=document.getElementById('notifList');if(!list)return;
+  list.innerHTML='';
+  keys.forEach((key,i)=>{
+    const div=document.createElement('div');div.className='notif-item';
+    div.innerHTML=`<div class="notif-text"><div class="notif-label">${t('notif_label'+i)}</div><div class="notif-desc">${t('notif_desc'+i)}</div></div><div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ntog-${key}" ${notifState[key]?'checked':''} onchange="notifState['${key}']=this.checked"><label class="toggle-label" for="ntog-${key}"></label></div>`;
+    list.appendChild(div);
+  });
+}
+function openNotifModal(){renderNotifList();document.getElementById('notifModal').classList.add('open');}
+function saveNotifs(){closeModal('notifModal');showToast(currentLang==='es'?'✓ Preferencias guardadas':'✓ Preferences saved');}
+
+// ============================================================
+// EDIT PROFILE MODAL
+// ============================================================
+function openEditProfileModal(){
+  document.getElementById('editName').value=profileData.name;
+  document.getElementById('editEmail').value=profileData.email;
+  document.getElementById('editPhone').value=profileData.phone;
+  document.getElementById('editPlate').value=profileData.plate;
+  document.querySelectorAll('#vehicleTypePills .dur-pill').forEach(p=>{p.classList.toggle('active',p.textContent===profileData.vehicle||(p.getAttribute('data-i18n')==='type_auto'&&profileData.vehicle==='Auto'));});
+  document.getElementById('editProfileModal').classList.add('open');
+}
+function selectVehicleType(type,el){newResVehicleType=type;profileData.vehicle=type;document.querySelectorAll('#vehicleTypePills .dur-pill').forEach(p=>p.classList.remove('active'));el.classList.add('active');}
+function setProfilePhoto(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=(e)=>{['profileAvatar','sidebarAvatar','topBarAvatar'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=`<img src="${e.target.result}" alt="foto">`;});showToast('📷 Foto actualizada');};reader.readAsDataURL(file);}
+function saveProfile(){
+  profileData.name=document.getElementById('editName').value;
+  profileData.email=document.getElementById('editEmail').value;
+  profileData.phone=document.getElementById('editPhone').value;
+  profileData.plate=document.getElementById('editPlate').value;
+  syncUserUI();
+  // Also update saved users
+  const session=getSession();
+  if(session){
+    const users=getUsers();
+    const idx=users.findIndex(u=>u.email===session.email);
+    if(idx>=0){users[idx]={...users[idx],...profileData};saveUsers(users);localStorage.setItem('parkium_session',JSON.stringify(users[idx]));}
+  }
+  dbSave('profile',profileData);
+  closeModal('editProfileModal');
+  showToast(currentLang==='es'?'✓ Perfil actualizado':'✓ Profile updated');
+}
+function showVehicleInfo(){showToast(`🚗 ${profileData.vehicle} • ${profileData.plate}`);}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// ============================================================
+// DB MOCK LAYER
+// ============================================================
+const DB_API='http://localhost:3001/api';
+async function dbSave(table,data){
+  try{localStorage.setItem(`parkium_${table}`,JSON.stringify(data));await fetch(`${DB_API}/${table}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(1500)});}catch{}
+}
+function dbLoad(table,fallback){try{const stored=localStorage.getItem(`parkium_${table}`);return stored?JSON.parse(stored):fallback;}catch{return fallback;}}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  const session = getSession();
+  if (session) {
+    profileData = { name:session.name, email:session.email, phone:session.phone||'', plate:session.plate||'', vehicle:session.vehicle||'Auto' };
+    startSession(session);
+  }
+  // Close modals on backdrop click
+  document.querySelectorAll('.full-modal').forEach(modal=>{
+    modal.addEventListener('click',(e)=>{if(e.target===modal)modal.classList.remove('open');});
+  });
+});
+</script>
+</body>
+</html>
