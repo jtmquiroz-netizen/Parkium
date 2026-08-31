@@ -456,8 +456,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
         <div class="auth-error" id="login-error">Correo o contraseña incorrectos</div>
         <button type="submit" class="auth-btn">Iniciar sesión</button>
         <div class="auth-divider">¿No tienes cuenta? <a href="#" onclick="switchAuthTab('register');return false" style="color:#4a9eff">Regístrate</a></div>
-        <button type="button" class="auth-btn" onclick="enterDemo()" style="background:rgba(74,158,255,.15);border:1px solid #4a9eff44;color:#4a9eff;margin-top:0">🚀 Entrar como demo</button>
-        <div style="font-size:11px;color:#5570a0;text-align:center;margin-top:-6px">demo@parkium.cl · demo123</div>
+        <div style="font-size:11px;color:#5570a0;text-align:center;margin-top:4px">Ingresa o crea tu cuenta para continuar</div>
       </form>
 
       <!-- REGISTER FORM -->
@@ -628,6 +627,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
                 </div>
               </div>
               <div class="pm-search">
+                <select id="centroSelector" onchange="cambiarCentro(this.value)" style="width:100%;background:#162035;border:1px solid #1e2f4a;border-radius:10px;padding:9px 12px;color:#e8f0ff;font-size:13px;outline:none;margin-bottom:8px;cursor:pointer"></select>
                 <input type="text" id="spotSearch" placeholder="Buscar espacio (ej: A-03)..." oninput="filterSpots(this.value)">
               </div>
               <div class="spot-grid" id="spotGrid"></div>
@@ -1008,7 +1008,6 @@ async function doLogin(e) {
   const email = document.getElementById('login-email').value.trim().toLowerCase();
   const pass  = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-error');
-  if (email === 'demo@parkium.cl' && pass === 'demo123') { enterDemo(); return; } // demo local
   try {
     await ParkiumAPI.login(email, pass);
     const perfil = await ParkiumAPI.miPerfil();
@@ -1053,6 +1052,7 @@ function startSession(user) {
   syncUserUI();
   renderSpotGrid();
   cargarPlazasReales();
+  poblarSelectorCentros();
   cargarReservasReales();
   renderMallsListInicio();
   renderNotifList();
@@ -1523,6 +1523,36 @@ async function cargarPlazasReales() {
     console.warn('No se pudieron cargar las plazas reales:', e.message);
   }
 }
+// Llena el selector de estacionamientos con los centros de la base
+async function poblarSelectorCentros(){
+  const sel = document.getElementById('centroSelector');
+  if(!sel) return;
+  try{
+    const centros = await ParkiumAPI.getCentros();
+    const activo = await getCentroActivo();
+    sel.innerHTML = centros.map(c=>`<option value="${c.id}">${c.nombre}${c.comuna?' — '+c.comuna:''}</option>`).join('');
+    if(activo) sel.value = activo.id;
+  }catch(e){ console.warn('No se pudo poblar el selector de centros:', e.message); }
+}
+
+// Cambia el estacionamiento activo: recarga plazas, stats y tiempo real
+async function cambiarCentro(centroId){
+  try{
+    const centros = await ParkiumAPI.getCentros();
+    const c = centros.find(x=>x.id===centroId);
+    if(!c) return;
+    if(_mapaCanal){ ParkiumAPI.db.removeChannel(_mapaCanal); _mapaCanal=null; }
+    if(_statsCanal){ ParkiumAPI.db.removeChannel(_statsCanal); _statsCanal=null; }
+    PARKIUM_CENTRO = c;
+    currentLevel = 1;
+    document.querySelectorAll('.level-tab').forEach((t,i)=>t.classList.toggle('active', i===0));
+    const search = document.getElementById('spotSearch'); if(search) search.value='';
+    await cargarPlazasReales();
+    actualizarStatsReales();
+    showToast('📍 '+c.nombre);
+  }catch(e){ showToast('⚠️ '+(e.message||'No se pudo cambiar de estacionamiento')); }
+}
+
 let allSpots = buildSpotData(1);
 
 function renderSpotGrid(filter='') {
