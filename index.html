@@ -1053,7 +1053,7 @@ function startSession(user) {
   syncUserUI();
   renderSpotGrid();
   cargarPlazasReales();
-  renderReservations();
+  cargarReservasReales();
   renderMallsListInicio();
   renderNotifList();
   navigateTo('inicio');
@@ -1602,11 +1602,23 @@ function showSpotDetail(spot) {
   document.getElementById('spotDetailTitle').textContent=`Espacio ${spot.id}`;
   document.getElementById('spotDetailStatus').textContent='🟢 Disponible';
   document.getElementById('spotDetailLevel').textContent=`Nivel ${spot.level}`;
-  document.getElementById('spotDetailRate').textContent='$600/hora';
+  document.getElementById('spotDetailRate').textContent='$'+((PARKIUM_CENTRO&&PARKIUM_CENTRO.tarifa_hora)||600)+'/hora';
   document.getElementById('spotBackdrop').classList.add('open');
 }
 function closeSpotDetail(){document.getElementById('spotBackdrop').classList.remove('open');}
-function bookSpotFromModal(){closeSpotDetail();openNewReservationModal();}
+async function bookSpotFromModal(){
+  closeSpotDetail();
+  if(!selectedSpot || !selectedSpot.plazaId){ openNewReservationModal(); return; }
+  try{
+    const centro = await getCentroActivo();
+    await ParkiumAPI.crearReserva(selectedSpot.plazaId, centro.id);
+    await refrescarTodo();
+    navigateTo('reservas');
+    showToast('✓ Reserva creada');
+  }catch(err){
+    showToast('⚠️ ' + (err.message || 'No se pudo reservar'));
+  }
+}
 
 // ============================================================
 // MAP (LEAFLET)
@@ -1789,7 +1801,46 @@ function buildResCard(r) {
   return div;
 }
 
-function cancelReservation(id){reservationsData=reservationsData.filter(r=>r.id!==id);renderReservations();showToast(currentLang==='es'?'✓ Reserva cancelada':'✓ Reservation cancelled');}
+// Carga "Mis reservas" desde Supabase y las pinta con el diseño existente
+async function cargarReservasReales(){
+  try{
+    const rows = await ParkiumAPI.misReservas();
+    const mapEstado = e => e==='activa'?'active':e==='pendiente'?'upcoming':(e==='finalizada'?'used':null);
+    reservationsData = rows.map(r=>{
+      const st = mapEstado(r.estado);
+      if(!st) return null; // omitir canceladas / expiradas
+      return {
+        id:r.id, mallId:r.centro_id,
+        name:(r.centros_comerciales&&r.centros_comerciales.nombre)||'Mall Plaza Maule',
+        spot:(r.plazas&&r.plazas.codigo)||'',
+        icon:'🅿️', status:st,
+        date:(r.creada_en||'').slice(0,10),
+        time:(r.creada_en||'').slice(11,16),
+        duration:r.minutos_totales, price:r.tarifa_hora_aplicada||1200, closes:''
+      };
+    }).filter(Boolean);
+  }catch(e){
+    console.warn('No se pudieron cargar las reservas:', e.message);
+  }
+  renderReservations();
+}
+
+// Refresca todo lo que depende de la disponibilidad tras crear/cancelar una reserva
+async function refrescarTodo(){
+  await cargarReservasReales();
+  cargarPlazasReales();
+  actualizarStatsReales();
+}
+
+async function cancelReservation(id){
+  try{
+    await ParkiumAPI.cancelarReserva(id);
+    await refrescarTodo();
+    showToast(currentLang==='es'?'✓ Reserva cancelada':'✓ Reservation cancelled');
+  }catch(err){
+    showToast('⚠️ '+(err.message||'No se pudo cancelar'));
+  }
+}
 
 // ============================================================
 // NEW RESERVATION MODAL
@@ -1843,18 +1894,24 @@ function buildConfirmCard(){
   document.getElementById('ccCost').textContent=newResSelectedMall.closes||'–';
 }
 
-function confirmReservation(){
-  if(!newResSelectedMall)return;
-  const dateVal=document.getElementById('resDate').value,timeVal=document.getElementById('resTime').value;
-  const spots=['A','B','C','D','E'];
-  const r=String(Math.floor(Math.random()*99)+1).padStart(2,'0');
-  const newRes={id:'r'+Date.now(),mallId:newResSelectedMall.id,name:newResSelectedMall.name,spot:`${spots[Math.floor(Math.random()*5)]}-${r}`,icon:newResSelectedMall.icon,status:'upcoming',date:dateVal,time:timeVal,duration:null,price:newResSelectedMall.price,closes:newResSelectedMall.closes};
-  reservationsData.unshift(newRes);
-  dbSave('reservations',reservationsData);
-  closeNewResModal();
-  renderReservations();
-  navigateTo('reservas');
-  setTimeout(()=>showToast('✓ Reserva creada'),300);
+async function confirmReservation(){
+  try{
+    const centro = await getCentroActivo();
+    // Buscar la primera plaza realmente libre
+    let libre=null;
+    for(const lvl of Object.keys(PLAZAS_REALES)){
+      const f=(PLAZAS_REALES[lvl]||[]).find(s=>s.type==='avail');
+      if(f){libre=f;break;}
+    }
+    if(!libre){ showToast('⚠️ No hay plazas disponibles ahora'); return; }
+    await ParkiumAPI.crearReserva(libre.plazaId, centro.id);
+    closeNewResModal();
+    await refrescarTodo();
+    navigateTo('reservas');
+    setTimeout(()=>showToast('✓ Reserva creada'),300);
+  }catch(err){
+    showToast('⚠️ '+(err.message||'No se pudo reservar'));
+  }
 }
 
 // ============================================================
