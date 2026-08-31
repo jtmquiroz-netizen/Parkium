@@ -135,7 +135,8 @@ const ParkiumAPI = {
   //   const canal = ParkiumAPI.suscribirDisponibilidad(centroId, () => refrescarMapa());
   //   // y al salir de la vista:  ParkiumAPI.db.removeChannel(canal);
   suscribirDisponibilidad(centroId, onCambio) {
-    return db.channel("disp-" + centroId)
+    const nombreCanal = "disp-" + centroId + "-" + Math.random().toString(36).slice(2, 8);
+    return db.channel(nombreCanal)
       .on("postgres_changes",
           { event: "*", schema: "public", table: "plazas",   filter: "centro_id=eq." + centroId },
           onCambio)
