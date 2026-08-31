@@ -1052,6 +1052,7 @@ function startSession(user) {
   if (_sb) _sb.style.display = 'flex';
   syncUserUI();
   renderSpotGrid();
+  cargarPlazasReales();
   renderReservations();
   renderMallsListInicio();
   renderNotifList();
@@ -1483,14 +1484,44 @@ function renderMallsListInicio() {
 // ============================================================
 // SPOT GRID (INICIO)
 // ============================================================
+// Plazas reales por nivel (se llenan desde Supabase en cargarPlazasReales)
+let PLAZAS_REALES = {};
+let _mapaCanal = null;
+
+function estadoATipo(estado){
+  return estado === 'ocupada' ? 'occ' : estado === 'reservada' ? 'reserved' : 'avail';
+}
+
 function buildSpotData(level) {
-  const rows=['A','B','C','D','E','F'],cols=8;
-  let occupied=[3,4,8,9,13,16,18,20,24,25,27,30,33,35,38,40,43],reserved=[2,10,22,37];
-  if(level===2){occupied=[1,5,7,11,15,19,22,26,28,31,34,36,39,41,44];reserved=[4,13,25,42];}
-  if(level===3){occupied=[2,4,6,12,16,20,23,27,29,32,35,38,40,43,46];reserved=[7,17,30,44];}
-  const spots=[];let idx=0;
-  rows.forEach(r=>{for(let c=1;c<=cols;c++){idx++;const id=`${r}-${String(c).padStart(2,'0')}`;let type='avail';if(occupied.includes(idx))type='occ';if(reserved.includes(idx))type='reserved';spots.push({id,type,level});}});
-  return spots;
+  return PLAZAS_REALES[level] || [];
+}
+
+async function cargarPlazasReales() {
+  try {
+    const centro = await getCentroActivo();
+    if (!centro) return;
+    const plazas = await ParkiumAPI.getPlazas(centro.id);   // vista v_plazas_estado
+    const porNivel = {};
+    plazas.forEach(p => {
+      const m = /^N(\d+)/.exec(p.codigo);
+      const nivel = m ? parseInt(m[1]) : 1;
+      (porNivel[nivel] = porNivel[nivel] || []).push({
+        id: p.codigo, type: estadoATipo(p.estado), level: nivel,
+        plazaId: p.id, tipo: p.tipo
+      });
+    });
+    Object.values(porNivel).forEach(arr => arr.sort((a,b) => a.id.localeCompare(b.id)));
+    PLAZAS_REALES = porNivel;
+    allSpots = buildSpotData(currentLevel);
+    const search = document.getElementById('spotSearch');
+    renderSpotGrid(search ? search.value : '');
+    // Tiempo real: el mapa se actualiza solo cuando cambia una plaza o reserva
+    if (!_mapaCanal) {
+      _mapaCanal = ParkiumAPI.suscribirDisponibilidad(centro.id, () => cargarPlazasReales());
+    }
+  } catch (e) {
+    console.warn('No se pudieron cargar las plazas reales:', e.message);
+  }
 }
 let allSpots = buildSpotData(1);
 
@@ -1528,7 +1559,7 @@ function renderSpotGrid(filter='') {
     if(col===0)s+=`<text x="${LABEL/2}" y="${y+SH/2+4}" text-anchor="middle" fill="#3a5878" font-size="9" font-weight="800" font-family="sans-serif">${rowLabels[ri]}</text>`;
     if(col<COLS-1)s+=`<line x1="${x+SW+1}" y1="${y+4}" x2="${x+SW+1}" y2="${y+SH-4}" stroke="#fff" stroke-width="0.4" opacity="0.12"/>`;
     if(spot.type==='avail'){
-      const oc=`onclick="showSpotDetail({id:'${spot.id}',type:'${spot.type}',level:${spot.level}})"`;
+      const oc=`onclick="showSpotDetail({id:'${spot.id}',type:'${spot.type}',level:${spot.level},plazaId:'${spot.plazaId||''}'})"`;
       s+=`<rect x="${x-1}" y="${y-1}" width="${SW+2}" height="${SH+2}" fill="none" stroke="#00c97a" stroke-width="0.6" rx="3" opacity="0.25"/>`;
       s+=`<rect x="${x}" y="${y}" width="${SW}" height="${SH}" fill="#00c97a0e" stroke="#00c97a" stroke-width="1.4" rx="2.5" cursor="pointer" ${oc} filter="url(#glowG)"/>`;
       const lx1=x+Math.floor(SW*.32),lx2=x+Math.floor(SW*.68);
