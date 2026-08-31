@@ -1410,6 +1410,48 @@ function showToast(msg) {
 }
 
 // ============================================================
+// ESTADÍSTICAS REALES (Supabase)
+// ============================================================
+let PARKIUM_CENTRO = null;   // centro activo (Mall Plaza Maule)
+let _statsCanal = null;      // canal de tiempo real (una sola suscripción)
+
+async function getCentroActivo() {
+  if (PARKIUM_CENTRO) return PARKIUM_CENTRO;
+  const centros = await ParkiumAPI.getCentros();
+  PARKIUM_CENTRO = centros.find(c => /plaza maule/i.test(c.nombre)) || centros[0] || null;
+  return PARKIUM_CENTRO;
+}
+
+function pintarStats(r) {
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = Number(val).toLocaleString('es-CL'); };
+  set('statsTotal', r.total);
+  set('statsAvail', r.disponibles);              // libres
+  set('statsOcc',   r.ocupada + r.reservada);    // no disponibles
+  const pct = r.pct_ocupacion;
+  const elP = document.querySelector('.donut-center'); if (elP) elP.textContent = pct + '%';
+  const circum = 2 * Math.PI * 19;
+  const dash = circum * (1 - pct / 100);
+  const elD = document.querySelector('.donut-card circle:last-child');
+  if (elD) { elD.setAttribute('stroke-dasharray', circum.toFixed(1)); elD.setAttribute('stroke-dashoffset', dash.toFixed(1)); }
+}
+
+async function actualizarStatsReales() {
+  try {
+    const centro = await getCentroActivo();
+    if (!centro) return;
+    pintarStats(await ParkiumAPI.getResumen(centro.id));
+    // Tiempo real: las estadísticas se actualizan solas cuando cambia una plaza o reserva
+    if (!_statsCanal) {
+      _statsCanal = ParkiumAPI.suscribirDisponibilidad(centro.id, async () => {
+        try { pintarStats(await ParkiumAPI.getResumen(centro.id)); } catch (e) {}
+      });
+    }
+  } catch (e) {
+    console.warn('No se pudieron cargar las estadísticas reales:', e.message);
+  }
+}
+
+// ============================================================
 // MALLS LIST (Inicio sidebar)
 // ============================================================
 function renderMallsListInicio() {
@@ -1417,18 +1459,8 @@ function renderMallsListInicio() {
   if (!container) return;
   container.innerHTML = '';
   const cityMalls = getActiveMalls();
-  // Update stat cards dynamically
-  const totalSpots = cityMalls.reduce((s,m)=>s+m.total,0);
-  const availSpots = cityMalls.reduce((s,m)=>s+m.avail,0);
-  const occSpots = totalSpots - availSpots;
-  const pct = totalSpots > 0 ? Math.round(occSpots/totalSpots*100) : 0;
-  const circum = 2*Math.PI*19;
-  const dash = circum*(1 - occSpots/Math.max(totalSpots,1));
-  const elT=document.getElementById('statsTotal'); if(elT) elT.textContent=totalSpots.toLocaleString();
-  const elA=document.getElementById('statsAvail'); if(elA) elA.textContent=availSpots.toLocaleString();
-  const elO=document.getElementById('statsOcc'); if(elO) elO.textContent=occSpots.toLocaleString();
-  const elP=document.querySelector('.donut-center'); if(elP) elP.textContent=pct+'%';
-  const elD=document.querySelector('.donut-card circle:last-child'); if(elD){elD.setAttribute('stroke-dasharray',circum.toFixed(1));elD.setAttribute('stroke-dashoffset',dash.toFixed(1));}
+  // Estadísticas reales desde Supabase (Mall Plaza Maule)
+  actualizarStatsReales();
   cityMalls.forEach(mall => {
     const ac = mall.avail > 20 ? 'mall-avail-ok' : mall.avail > 0 ? 'mall-avail-low' : 'mall-avail-full';
     const at = mall.avail > 0 ? `${mall.avail} disponibles` : 'Sin disponibilidad';
